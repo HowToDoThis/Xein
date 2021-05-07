@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
@@ -74,7 +73,7 @@ namespace Xein
         /// <returns>Short Time String</returns>
         private static string GetTime()
         {
-            return DateTime.Now.TimeOfDay.ToString(@"hh\:mm\:ss");
+            return DateTime.Now.ToShortDateString() + " " + DateTime.Now.ToShortTimeString();
         }
 
         /// <summary>
@@ -83,8 +82,7 @@ namespace Xein
         /// <param name="msg">Message</param>
         public static void Warn(string msg)
         {
-            var item = new ConsoleItem($"[{GetTime()}] [WARN] {msg}", ConsoleType.Warn);
-            item.Print();
+            new ConsoleItem($"[{GetTime()}] [WARN] {msg}", ConsoleType.Warn).Print();
         }
 
         /// <summary>
@@ -93,8 +91,7 @@ namespace Xein
         /// <param name="msg">Message</param>
         public static void Error(string msg)
         {
-            var item = new ConsoleItem($"[{GetTime()}] [ERROR] {msg}", ConsoleType.Error);
-            item.Print();
+            new ConsoleItem($"[{GetTime()}] [ERROR] {msg}", ConsoleType.Error).Print();
         }
 
         /// <summary>
@@ -103,8 +100,7 @@ namespace Xein
         /// <param name="msg">Message</param>
         public static void Log(string msg)
         {
-            var item = new ConsoleItem($"[{GetTime()}] {msg}", ConsoleType.Normal);
-            item.Print();
+            new ConsoleItem($"[{GetTime()}] {msg}", ConsoleType.Normal).Print();
         }
 
         /// <summary>
@@ -113,8 +109,7 @@ namespace Xein
         /// <param name="msg">Message</param>
         public static void Debug(string msg)
         {
-            var item = new ConsoleItem($"[{GetTime()}] [DEBUG] {msg}", ConsoleType.Debug);
-            item.Print();
+            new ConsoleItem($"[{GetTime()}] [DEBUG] {msg}", ConsoleType.Debug).Print();
         }
     }
 }
