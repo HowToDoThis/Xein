@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Xein", "Xein\Xein.csproj", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Xein.Net", "Xein.Net\Xein.Net.csproj", "{9F8F5F71-64BC-441B-AA00-F1D988169979}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Xein.Updater", "Xein.Updater\Xein.Updater.csproj", "{2FCF562E-AB70-4DA7-B3FF-9DA29D58A0A6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,5 +23,9 @@ Global
 		{9F8F5F71-64BC-441B-AA00-F1D988169979}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9F8F5F71-64BC-441B-AA00-F1D988169979}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9F8F5F71-64BC-441B-AA00-F1D988169979}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2FCF562E-AB70-4DA7-B3FF-9DA29D58A0A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2FCF562E-AB70-4DA7-B3FF-9DA29D58A0A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2FCF562E-AB70-4DA7-B3FF-9DA29D58A0A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2FCF562E-AB70-4DA7-B3FF-9DA29D58A0A6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
