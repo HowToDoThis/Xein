@@ -1,10 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace Xein.Net
 {
@@ -69,7 +68,8 @@ namespace Xein.Net
         {
             try
             {
-                tcpSocket = new(SocketType.Stream, ProtocolType.Tcp) {
+                tcpSocket = new(SocketType.Stream, ProtocolType.Tcp)
+                {
                     NoDelay = true,
                     DualMode = true,
                 };
@@ -92,7 +92,8 @@ namespace Xein.Net
         {
             try
             {
-                udpSocket = new(SocketType.Dgram, ProtocolType.Udp) {
+                udpSocket = new(SocketType.Dgram, ProtocolType.Udp)
+                {
                     DualMode = true,
                 };
 
@@ -162,7 +163,7 @@ namespace Xein.Net
             if (udpSocket is not null)
                 udpSocket.Dispose();
 
-            foreach(var client in Clients.ToList())
+            foreach (var client in Clients.ToList())
                 client.Dispose();
             Clients.Clear();
         }

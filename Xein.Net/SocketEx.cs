@@ -2,8 +2,6 @@
 using System.Net;
 using System.Net.Sockets;
 
-#pragma warning disable CS8794 // The input always matches the provided pattern.
-
 namespace Xein.Net
 {
     public class SocketEx
