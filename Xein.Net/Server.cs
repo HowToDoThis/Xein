@@ -8,103 +8,173 @@ using System.Text;
 
 namespace Xein.Net
 {
+    public class ClientConnectedEventArgs : EventArgs
+    {
+        public string IP { get; set; }
+        public DateTime Time { get; set; }
+    }
+
+    public class ShutdownEventArgs : EventArgs
+    {
+        public bool IsTcpAcceptBusying { get; set; }
+        public bool IsTcpBusying { get; set; }
+        public bool IsUdpBusying { get; set; }
+    }
+
+    public class ReceivedDataEventArgs : EventArgs
+    {
+        public byte[] ReceivedData { get; set; }
+        public int ReceivedSize { get; set; }
+
+        public EndPoint EndPoint { get; set; }
+    }
+
     public class Server
     {
+        #region Properties/Fields
+
         public Socket tcpSocket = null;
         public Socket udpSocket = null;
 
-        public bool IsServerInit { get; } = false;
-        public bool IsServerClosed { get; } = false;
-
         public List<SocketEx> Clients { get; set; } = new();
+
+        private bool tryShutdown = false;
+        private bool isTcpAcceptBusy;
+        private bool isTcpBusy;
+        private bool isUdpBusy;
+        #endregion
+
+        #region Events
+        public event EventHandler<ClientConnectedEventArgs> ClientConnected;
+        public event EventHandler<ReceivedDataEventArgs> ReceivedTcpClientData;
+        public event EventHandler<ReceivedDataEventArgs> ReceivedUdpClientData;
+
+        public event EventHandler<ShutdownEventArgs> ShutdownCalled;
+        public event EventHandler Running;
+        #endregion
 
         /// <summary>
         /// Xein's Server Module
         /// </summary>
-        /// <param name="ip">The IP should running on</param>
-        /// <param name="tcpPort">TcpServer Port</param>
-        /// <param name="udpPort">UdpServer Port</param>
-        /// <param name="initTcp">Init TcpServer</param>
-        /// <param name="initUdp">Init UdpServer</param>
-        public Server(IPAddress ip, int tcpPort, int udpPort, bool initTcp = true, bool initUdp = true)
+        public Server()
         {
-            if (initTcp == false && initUdp == false)
-                throw new InvalidOperationException("Pick atleast 1 socket stream type!");
 
-            if (initTcp)
-            {
-                try
-                {
-                    tcpSocket = new(SocketType.Stream, ProtocolType.Tcp)
-                    {
-                        NoDelay = true,
-                        DualMode = true,
-                    };
-
-                    tcpSocket.Bind(new IPEndPoint(ip, tcpPort));
-                }
-                catch
-                {
-                    throw new Exception("TcpSocket failed to init");
-                }
-            }
-
-            if (initUdp)
-            {
-                try
-                {
-                    udpSocket = new(SocketType.Dgram, ProtocolType.Udp)
-                    {
-                        DualMode = true,
-                    };
-
-                    udpSocket.Bind(new IPEndPoint(ip, udpPort));
-                }
-                catch
-                {
-                    throw new Exception("UdpSocket failed to init");
-                }
-
-            }
-
-            if (tcpSocket is not null)
-            {
-                if (tcpSocket.IsBound == false)
-                    throw new InvalidProgramException("TcpServer Init Successfully, but is not bounded?");
-            }
-
-            if (udpSocket is not null)
-            {
-                if (udpSocket.IsBound == false)
-                    throw new InvalidProgramException("UdpServer Init Successfully, but is not bounded?");
-            }
-
-            IsServerInit = true;
         }
 
         /// <summary>
-        /// Call Socket Ready To Accpet Clients
+        /// Setup TcpSocket
         /// </summary>
-        public void Listen(int backlog = int.MaxValue)
+        /// <returns>Is TcpSocket Bounded</returns>
+        public bool SetupTcp(IPAddress ip, int port)
         {
-            if (!IsServerInit)
-                throw new InvalidOperationException("This should not be happen, Please Check Init");
+            try
+            {
+                tcpSocket = new(SocketType.Stream, ProtocolType.Tcp) {
+                    NoDelay = true,
+                    DualMode = true,
+                };
 
+                tcpSocket.Bind(new IPEndPoint(ip, port));
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"TcpSocket failed to init\nMessage: {e.Message}");
+            }
+
+            return tcpSocket.IsBound;
+        }
+
+        /// <summary>
+        /// Setup UdpSocket
+        /// </summary>
+        /// <returns>Is UdpSocket Bounded</returns>
+        public bool SetupUdp(IPAddress ip, int port)
+        {
+            try
+            {
+                udpSocket = new(SocketType.Dgram, ProtocolType.Udp) {
+                    DualMode = true,
+                };
+
+                udpSocket.Bind(new IPEndPoint(ip, port));
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"UdpSocket failed to init\nMessage: {e.Message}");
+            }
+
+            return udpSocket.IsBound;
+        }
+
+        /// <summary>
+        /// Call TcpSocket Ready To Accept Clients
+        /// </summary>
+        public void Start(bool udp = false, int backlog = int.MaxValue)
+        {
             if (tcpSocket is null)
-                throw new InvalidOperationException("TcpSocket Is Null? Please Check Init");
+                throw new InvalidOperationException("TcpSocket is null? Did you call SetupTcp()?");
 
             tcpSocket.Listen(backlog);
 
             ThreadPool.QueueUserWorkItem(AcceptClient);
             ThreadPool.QueueUserWorkItem(ListenClient);
+
+            if (udp && udpSocket is null)
+                throw new InvalidOperationException("UdpSocket is null? Did you call SetupUdp()?");
+            else
+                ThreadPool.QueueUserWorkItem(ReceiveFromUdp);
+
+            Running?.Invoke(this, new EventArgs());
         }
 
-        // STARTING HERE IS PRIVATE METHODS
+        public void Shutdown()
+        {
+            tryShutdown = true;
+
+            ShutdownCalled?.Invoke(this, new() { IsTcpAcceptBusying = isTcpAcceptBusy, IsTcpBusying = isTcpBusy, IsUdpBusying = isUdpBusy });
+
+        wait:
+            Console.WriteLine($"[Server Shutdown] TcpClient: {Clients.Count} isTcpAcceptBusy: {isTcpAcceptBusy} isTcpBusy: {isTcpBusy} isUdpBusy: {isUdpBusy}");
+
+            if (Clients.Count >= 1)
+            {
+                foreach (SocketEx client in Clients.ToList())
+                {
+                    client.Dispose();
+                    Clients.Remove(client);
+                }
+            }
+
+            Thread.Sleep(1000);
+
+            if (isTcpAcceptBusy)
+                goto wait;
+            if (isTcpBusy)
+                goto wait;
+            if (isUdpBusy)
+                goto wait;
+        }
+
+        public void Dispose()
+        {
+            if (tcpSocket is not null)
+                tcpSocket.Dispose();
+            if (udpSocket is not null)
+                udpSocket.Dispose();
+
+            foreach(var client in Clients.ToList())
+                client.Dispose();
+            Clients.Clear();
+        }
+
+        #region Private Methods
 
         private readonly ManualResetEvent tcpAccept = new(false);
         private void AcceptClient(object state)
         {
-            while (IsServerInit)
+            isTcpAcceptBusy = true;
+
+            while (!tryShutdown)
             {
                 try
                 {
@@ -114,10 +184,12 @@ namespace Xein.Net
                 }
                 catch (ObjectDisposedException)
                 {
-                    if (!IsServerClosed)
+                    if (tryShutdown)
                         break;
                 }
             }
+
+            isTcpAcceptBusy = false;
         }
 
         private void Server_BeginAccept(IAsyncResult ar)
@@ -130,7 +202,7 @@ namespace Xein.Net
 
                 Clients.Add(ex);
 
-                Console.WriteLine($"[Server] Client '{ex.IP}' has connected!");
+                ClientConnected?.Invoke(this, new ClientConnectedEventArgs() { IP = ex.IP, Time = ex.ConnectedTime });
             }
             catch
             {
@@ -142,8 +214,13 @@ namespace Xein.Net
 
         private void ListenClient(object state)
         {
-            while (IsServerInit)
+            isTcpBusy = true;
+
+            while (!tryShutdown)
             {
+                if (tryShutdown)
+                    break;
+
                 if (Clients.Count <= 0)
                 {
                     Thread.Sleep(100);
@@ -153,17 +230,37 @@ namespace Xein.Net
                 // copy a list for preventing shit problems
                 foreach (var client in Clients.ToList())
                 {
-                    // TODO: Do a better check here pls
-                    if (client.Socket.Available == 0)
+                    if (!client.IsStillAlive())
                         continue;
 
-                    // for temp, print all data to here
-                    client.ResetRead();
                     var readed = client.Read();
-
-                    Console.WriteLine($"[Client '{client.IP}'] sent {readed} bytes: {Encoding.UTF8.GetString(client.buffer)}");
+                    ReceivedTcpClientData?.Invoke(this, new ReceivedDataEventArgs() { EndPoint = client.Socket.RemoteEndPoint, ReceivedData = client.buffer, ReceivedSize = client.bufRead });
                 }
             }
+
+            isTcpBusy = false;
         }
+
+        private void ReceiveFromUdp(object state)
+        {
+            isUdpBusy = true;
+
+            while (!tryShutdown)
+            {
+                if (tryShutdown)
+                    break;
+
+                byte[] data = new byte[16384];
+                IPEndPoint udpEndPoint = new(IPAddress.Any, 0);
+                EndPoint ep = udpEndPoint;
+
+                var recv = udpSocket.ReceiveFrom(data, ref ep);
+                ReceivedUdpClientData?.Invoke(this, new ReceivedDataEventArgs() { EndPoint = ep, ReceivedData = data, ReceivedSize = recv });
+            }
+
+            isUdpBusy = false;
+        }
+
+        #endregion
     }
 }

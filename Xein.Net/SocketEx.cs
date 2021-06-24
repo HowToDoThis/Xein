@@ -2,6 +2,8 @@
 using System.Net;
 using System.Net.Sockets;
 
+#pragma warning disable CS8794 // The input always matches the provided pattern.
+
 namespace Xein.Net
 {
     public class SocketEx
@@ -47,11 +49,44 @@ namespace Xein.Net
             }
         }
 
+        public bool IsStillAlive()
+        {
+            if (Socket.Poll(1000, SelectMode.SelectRead))
+                if (Socket.Available == 0)
+                    if (!IsSocketStillAlive())
+                        return false;
+
+            return true;
+        }
+
+        public bool IsSocketStillAlive()
+        {
+            try
+            {
+                byte[] nul = new byte[1];
+                nul[0] = 0;
+                Socket.Send(nul);
+
+                return true;
+            }
+            catch (SocketException e)
+            {
+                if (e.SocketErrorCode is not SocketError.WouldBlock or not SocketError.Success)
+                    return false;
+            }
+            catch (ObjectDisposedException)
+            { }
+
+            return false;
+        }
+
         /// <summary>
         /// Read data to buffer
         /// </summary>
         public int Read()
         {
+            ResetRead();
+
             try
             {
                 int ret = Socket.Receive(buffer);
@@ -73,6 +108,23 @@ namespace Xein.Net
         {
             Array.Clear(buffer, 0, buffer.Length);
             bufRead = 0;
+        }
+
+        /// <summary>
+        /// Close Connection
+        /// </summary>
+        public void Shutdown()
+        {
+            Socket.Shutdown(SocketShutdown.Both);
+        }
+
+        /// <summary>
+        /// Close Socket and Dispose
+        /// </summary>
+        public void Dispose()
+        {
+            Shutdown();
+            Socket.Dispose();
         }
     }
 }
