@@ -3,8 +3,6 @@ using System.IO;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
 
-#pragma warning disable IDE0060 // Remove unused parameter
-
 namespace Xein.Updater
 {
     class Program
@@ -17,23 +15,27 @@ namespace Xein.Updater
             _ = MessageBox((IntPtr)0, msg, title, 0);
         }
 
+        static string update = "Update.zip";
         static void Main(string[] args)
         {
-            if (!File.Exists("Update.zip"))
-            {
-                ShowMsg("No Update File Found. Exiting.");
-            }
-            else
+            if (args.Length >= 1 && args[0] is not null)
+                update = args[0];
+
+            if (File.Exists(update))
             {
                 try
                 {
-                    ZipFile.ExtractToDirectory("Update.zip", "./", true);
+                    ZipFile.ExtractToDirectory(update, "./", true);
                     ShowMsg("Update Successfully.");
                 }
                 catch (Exception e)
                 {
-                    ShowMsg($"Message:\n{e.Message}\nStack Trace:\n{e.StackTrace}", "Exception Triggered");
+                    ShowMsg($"File: {update}\nMessage:\n{e.Message}\nStack Trace:\n{e.StackTrace}", "Exception Triggered");
                 }
+            }
+            else
+            {
+                ShowMsg("Update File Not Found. Exiting.");
             }
         }
     }
