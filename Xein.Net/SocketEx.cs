@@ -71,8 +71,7 @@ namespace Xein.Net
             }
             catch (SocketException e)
             {
-                if (e.SocketErrorCode is not SocketError.WouldBlock or not SocketError.Success)
-                    return false;
+                return e.SocketErrorCode is SocketError.WouldBlock or SocketError.Success;
             }
             catch (ObjectDisposedException)
             { }
