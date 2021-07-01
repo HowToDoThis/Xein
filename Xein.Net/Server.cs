@@ -235,7 +235,7 @@ namespace Xein.Net
                         continue;
 
                     var readed = client.Read();
-                    ReceivedTcpClientData?.Invoke(this, new ReceivedDataEventArgs() { EndPoint = client.Socket.RemoteEndPoint, ReceivedData = client.buffer, ReceivedSize = client.bufRead });
+                    ReceivedTcpClientData?.Invoke(this, new ReceivedDataEventArgs() { EndPoint = client.Socket.RemoteEndPoint, ReceivedData = client.buffer.ToArray(), ReceivedSize = readed });
                 }
             }
 
@@ -251,7 +251,7 @@ namespace Xein.Net
                 if (tryShutdown)
                     break;
 
-                byte[] data = new byte[16384];
+                byte[] data = new byte[short.MaxValue];
                 IPEndPoint udpEndPoint = new(IPAddress.Any, 0);
                 EndPoint ep = udpEndPoint;
 
