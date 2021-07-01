@@ -7,8 +7,10 @@ using System.Threading;
 
 namespace Xein.Net
 {
-    public class ClientConnectedEventArgs : EventArgs
+    public class ClientStatsEventArgs : EventArgs
     {
+        public SocketEx Client { get; set; }
+
         public string IP { get; set; }
         public DateTime Time { get; set; }
     }
@@ -44,7 +46,9 @@ namespace Xein.Net
         #endregion
 
         #region Events
-        public event EventHandler<ClientConnectedEventArgs> ClientConnected;
+        public event EventHandler<ClientStatsEventArgs> ClientConnected;
+        public event EventHandler<ClientStatsEventArgs> ClientDisconnected;
+
         public event EventHandler<ReceivedDataEventArgs> ReceivedTcpClientData;
         public event EventHandler<ReceivedDataEventArgs> ReceivedUdpClientData;
 
@@ -125,7 +129,7 @@ namespace Xein.Net
             else
                 ThreadPool.QueueUserWorkItem(ReceiveFromUdp);
 
-            Running?.Invoke(this, new EventArgs());
+            Running?.Invoke(this, new());
         }
 
         public void Shutdown()
@@ -203,7 +207,7 @@ namespace Xein.Net
 
                 Clients.Add(ex);
 
-                ClientConnected?.Invoke(this, new ClientConnectedEventArgs() { IP = ex.IP, Time = ex.ConnectedTime });
+                ClientConnected?.Invoke(this, new() { Client = ex, IP = ex.IP, Time = ex.ConnectedTime });
             }
             catch
             {
@@ -228,14 +232,17 @@ namespace Xein.Net
                     continue;
                 }
 
-                // copy a list for preventing shit problems
                 foreach (var client in Clients.ToList())
                 {
                     if (!client.IsStillAlive())
+                    {
+                        ClientDisconnected?.Invoke(this, new() { Client = client, IP = client.IP, Time = client.ConnectedTime });
+                        Clients.Remove(client);
                         continue;
+                    }
 
                     var readed = client.Read();
-                    ReceivedTcpClientData?.Invoke(this, new ReceivedDataEventArgs() { EndPoint = client.Socket.RemoteEndPoint, ReceivedData = client.buffer.ToArray(), ReceivedSize = readed });
+                    ReceivedTcpClientData?.Invoke(this, new() { EndPoint = client.Socket.RemoteEndPoint, ReceivedData = client.buffer.ToArray(), ReceivedSize = readed });
                 }
             }
 
@@ -256,7 +263,7 @@ namespace Xein.Net
                 EndPoint ep = udpEndPoint;
 
                 var recv = udpSocket.ReceiveFrom(data, ref ep);
-                ReceivedUdpClientData?.Invoke(this, new ReceivedDataEventArgs() { EndPoint = ep, ReceivedData = data, ReceivedSize = recv });
+                ReceivedUdpClientData?.Invoke(this, new() { EndPoint = ep, ReceivedData = data, ReceivedSize = recv });
             }
 
             isUdpBusy = false;
