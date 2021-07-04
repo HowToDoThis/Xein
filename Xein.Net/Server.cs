@@ -13,6 +13,8 @@ namespace Xein.Net
 
         public string IP { get; set; }
         public DateTime Time { get; set; }
+
+        public SocketError Exception { get; set; }
     }
 
     public class ShutdownEventArgs : EventArgs
@@ -242,6 +244,18 @@ namespace Xein.Net
                     }
 
                     var readed = client.Read();
+                    if (client.bufRead == 0)
+                    {
+                        var error = (SocketError)readed;
+                        if (error != SocketError.WouldBlock)
+                        {
+                            ClientDisconnected?.Invoke(this, new() { Client = client, IP = client.IP, Time = client.ConnectedTime, Exception = error });
+                            Clients.Remove(client);
+                        }
+
+                        continue;
+                    }
+
                     ReceivedTcpClientData?.Invoke(this, new() { EndPoint = client.Socket.RemoteEndPoint, ReceivedData = client.buffer.ToArray(), ReceivedSize = readed });
                 }
             }
