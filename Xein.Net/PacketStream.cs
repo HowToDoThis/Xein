@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 
@@ -7,6 +8,10 @@ namespace Xein.Net
     public class PacketStream
     {
         MemoryStream Stream { get; set; }
+
+        public int OwnPos { get; set; } = 0;
+        public int StreamLength { get; private set; } = 0;
+
 
         /// <summary>
         /// Create a 32KB Stream
@@ -22,6 +27,7 @@ namespace Xein.Net
         public PacketStream(byte[] data)
         {
             Stream = new MemoryStream(data, false);
+            StreamLength = data.Length;
         }
 
         #region Read
@@ -37,13 +43,18 @@ namespace Xein.Net
                 cur = Convert.ToChar(ReadByte());
             }
 
+            OwnPos += buf.Length;
             return buf;
         }
 
         public byte[] ReadSize(int size)
         {
+            if (StreamLength - Stream.Position < size)
+                return null;
+
             byte[] buf = new byte[size];
             Stream.Read(buf);
+            OwnPos += buf.Length;
             return buf;
         }
 
@@ -54,46 +65,73 @@ namespace Xein.Net
 
         public byte ReadByte()
         {
+            if (StreamLength - Stream.Position < sizeof(byte))
+                return 0;
+            OwnPos += sizeof(byte);
             return Convert.ToByte(Stream.ReadByte());
         }
 
         public short ReadShort()
         {
+            if (StreamLength - Stream.Position < sizeof(short))
+                return 0;
+            OwnPos += sizeof(short);
             return BitConverter.ToInt16(Read<short>());
         }
 
         public ushort ReadUShort()
         {
+            if (StreamLength - Stream.Position < sizeof(ushort))
+                return 0;
+            OwnPos += sizeof(ushort);
             return BitConverter.ToUInt16(Read<ushort>());
         }
 
         public int ReadInt()
         {
+            if (StreamLength - Stream.Position < sizeof(int))
+                return 0;
+            OwnPos += sizeof(int);
             return BitConverter.ToInt32(Read<int>());
         }
 
         public uint ReadUInt()
         {
+            if (StreamLength - Stream.Position < sizeof(uint))
+                return 0;
+            OwnPos += sizeof(uint);
             return BitConverter.ToUInt32(Read<uint>());
         }
 
         public long ReadLong()
         {
+            if (StreamLength - Stream.Position < sizeof(long))
+                return 0;
+            OwnPos += sizeof(long);
             return BitConverter.ToInt64(Read<long>());
         }
 
         public ulong ReadULong()
         {
+            if (StreamLength - Stream.Position < sizeof(ulong))
+                return 0;
+            OwnPos += sizeof(ulong);
             return BitConverter.ToUInt64(Read<ulong>());
         }
 
         public float ReadFloat()
         {
+            if (StreamLength - Stream.Position < sizeof(float))
+                return 0;
+            OwnPos += sizeof(float);
             return BitConverter.ToSingle(Read<float>());
         }
 
         public double ReadDouble()
         {
+            if (StreamLength - Stream.Position < sizeof(double))
+                return 0;
+            OwnPos += sizeof(double);
             return BitConverter.ToDouble(Read<double>());
         }
 
@@ -175,7 +213,6 @@ namespace Xein.Net
 
             var test = Encoding.UTF8.GetBytes(data);
             Write(test);
-            //Write((byte)0);
         }
 
         public void Write(Enum data)
