@@ -14,7 +14,7 @@ namespace Xein.Net
         public int TotalReceived { get; set; } = 0;
         public int TotalSent { get; set; } = 0;
 
-        public byte[] buffer = new byte[short.MaxValue];
+        public byte[] buffer = new byte[ushort.MaxValue];
         public int bufRead = 0;
 
         /// <summary>

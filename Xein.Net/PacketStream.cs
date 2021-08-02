@@ -43,7 +43,6 @@ namespace Xein.Net
                 cur = Convert.ToChar(ReadByte());
             }
 
-            OwnPos += buf.Length;
             return buf;
         }
 
@@ -54,7 +53,6 @@ namespace Xein.Net
 
             byte[] buf = new byte[size];
             Stream.Read(buf);
-            OwnPos += buf.Length;
             return buf;
         }
 
@@ -67,7 +65,6 @@ namespace Xein.Net
         {
             if (StreamLength - Stream.Position < sizeof(byte))
                 return 0;
-            OwnPos += sizeof(byte);
             return Convert.ToByte(Stream.ReadByte());
         }
 
@@ -75,7 +72,6 @@ namespace Xein.Net
         {
             if (StreamLength - Stream.Position < sizeof(short))
                 return 0;
-            OwnPos += sizeof(short);
             return BitConverter.ToInt16(Read<short>());
         }
 
@@ -83,7 +79,6 @@ namespace Xein.Net
         {
             if (StreamLength - Stream.Position < sizeof(ushort))
                 return 0;
-            OwnPos += sizeof(ushort);
             return BitConverter.ToUInt16(Read<ushort>());
         }
 
@@ -91,7 +86,6 @@ namespace Xein.Net
         {
             if (StreamLength - Stream.Position < sizeof(int))
                 return 0;
-            OwnPos += sizeof(int);
             return BitConverter.ToInt32(Read<int>());
         }
 
@@ -99,7 +93,6 @@ namespace Xein.Net
         {
             if (StreamLength - Stream.Position < sizeof(uint))
                 return 0;
-            OwnPos += sizeof(uint);
             return BitConverter.ToUInt32(Read<uint>());
         }
 
@@ -107,7 +100,6 @@ namespace Xein.Net
         {
             if (StreamLength - Stream.Position < sizeof(long))
                 return 0;
-            OwnPos += sizeof(long);
             return BitConverter.ToInt64(Read<long>());
         }
 
@@ -115,7 +107,6 @@ namespace Xein.Net
         {
             if (StreamLength - Stream.Position < sizeof(ulong))
                 return 0;
-            OwnPos += sizeof(ulong);
             return BitConverter.ToUInt64(Read<ulong>());
         }
 
@@ -123,7 +114,6 @@ namespace Xein.Net
         {
             if (StreamLength - Stream.Position < sizeof(float))
                 return 0;
-            OwnPos += sizeof(float);
             return BitConverter.ToSingle(Read<float>());
         }
 
@@ -131,7 +121,6 @@ namespace Xein.Net
         {
             if (StreamLength - Stream.Position < sizeof(double))
                 return 0;
-            OwnPos += sizeof(double);
             return BitConverter.ToDouble(Read<double>());
         }
 
