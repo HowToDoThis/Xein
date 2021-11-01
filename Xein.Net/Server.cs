@@ -126,10 +126,13 @@ namespace Xein.Net
             ThreadPool.QueueUserWorkItem(AcceptClient);
             ThreadPool.QueueUserWorkItem(ListenClient);
 
-            if (udp && udpSocket is null)
-                throw new InvalidOperationException("UdpSocket is null? Did you call SetupUdp()?");
-            else
+            if (udp)
+            {
+                if (udpSocket is null)
+                    throw new InvalidOperationException("UdpSocket is null? Did you call SetupUdp()?");
+
                 ThreadPool.QueueUserWorkItem(ReceiveFromUdp);
+            }
 
             Running?.Invoke(this, new());
         }
