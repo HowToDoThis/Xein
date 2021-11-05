@@ -30,6 +30,7 @@ namespace Xein.Net
         public int ReceivedSize { get; set; }
 
         public EndPoint EndPoint { get; set; }
+        public SocketEx Socket { get; set; }
     }
 
     public class Server
@@ -259,7 +260,7 @@ namespace Xein.Net
                         continue;
                     }
 
-                    ReceivedTcpClientData?.Invoke(this, new() { EndPoint = client.Socket.RemoteEndPoint, ReceivedData = client.buffer.ToArray(), ReceivedSize = readed });
+                    ReceivedTcpClientData?.Invoke(this, new() { Socket = client, EndPoint = client.Socket.RemoteEndPoint, ReceivedData = client.buffer.ToArray(), ReceivedSize = readed });
                 }
             }
 
