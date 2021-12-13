@@ -62,7 +62,7 @@ namespace Xein
     /// <summary>
     /// This Class Are Handling Every Single Thread Created
     /// Within This Program For Tracking Purpose
-    /// And Runs with TheradPool.QueueUserWorkItem
+    /// And Runs with ThreadPool.QueueUserWorkItem
     /// </summary>
     public static class ThreadEx
     {
@@ -83,13 +83,12 @@ namespace Xein
             item.ManagedThreadId = th.ManagedThreadId;
             item.Signal.Set();
 
+            // Add To Lists
             Threads.Add(item);
-
-            // Debug?
-            // ignore SecondTick :D
-            if (!item.Function.Method.Name.Contains("SecondTick"))
-                ConsoleEx.Debug($"[Thread #{item.ManagedThreadId}] is Ready to run [{item.Function.Method.Name}]" + (item.State is not null ? $" with [{item.State}]" : ""));
-
+            
+            // Logging
+            ConsoleEx.Debug($"[Thread #{item.ManagedThreadId}] is Ready to run [{item.Function.Method.Name}]" + (item.State is not null ? $" with [{item.State}]" : ""));
+            
             // Start Job
             item.Function(item.State);
 
@@ -104,7 +103,7 @@ namespace Xein
         public static Thread Create(string name, WaitCallback func)
         {
             var item = new ThreadItem(name, func);
-            ThreadPool.QueueUserWorkItem(DummyThreadFunction, item);
+            ThreadPool.QueueUserWorkItem(new(DummyThreadFunction), item);
 
             item.Signal.WaitOne();
 
@@ -118,7 +117,7 @@ namespace Xein
         public static Thread Create(string name, WaitCallback func, object state)
         {
             var item = new ThreadItem(name, func, state);
-            ThreadPool.QueueUserWorkItem(DummyThreadFunction, item);
+            ThreadPool.QueueUserWorkItem(new(DummyThreadFunction), item);
 
             item.Signal.WaitOne();
 
@@ -132,7 +131,7 @@ namespace Xein
         public static Thread CreateUnsafe(string name, WaitCallback func)
         {
             var item = new ThreadItem(name, func);
-            ThreadPool.UnsafeQueueUserWorkItem(DummyThreadFunction, item);
+            ThreadPool.UnsafeQueueUserWorkItem(new(DummyThreadFunction), item);
 
             item.Signal.WaitOne();
 
@@ -146,7 +145,7 @@ namespace Xein
         public static Thread CreateUnsafe(string name, WaitCallback func, object state)
         {
             var item = new ThreadItem(name, func, state);
-            ThreadPool.UnsafeQueueUserWorkItem(DummyThreadFunction, item);
+            ThreadPool.UnsafeQueueUserWorkItem(new(DummyThreadFunction), item);
 
             item.Signal.WaitOne();
 

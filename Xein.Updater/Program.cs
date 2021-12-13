@@ -12,7 +12,7 @@ namespace Xein.Updater
 
         static void ShowMsg(string msg, string title = "Error")
         {
-            _ = MessageBox((IntPtr)0, msg, title, 0);
+            MessageBox((IntPtr)0, msg, title, 0);
         }
 
         static string update = "Update.zip";
