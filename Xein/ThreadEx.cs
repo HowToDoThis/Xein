@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 
 namespace Xein
@@ -34,15 +35,18 @@ namespace Xein
         /// </summary>
         public Thread Thread { get; set; }
 
+        public bool Logging { get; set; } = true;
+
         /// <summary>
         /// Create Thread without State(Pass to function)
         /// </summary>
         /// <param name="name">Thread Name</param>
         /// <param name="func">Function</param>
-        public ThreadItem(string name, WaitCallback func)
+        public ThreadItem(string name, WaitCallback func, bool logging = true)
         {
             Name = name;
             Function = func;
+            Logging = logging;
         }
 
         /// <summary>
@@ -51,11 +55,12 @@ namespace Xein
         /// <param name="name">Thread Name</param>
         /// <param name="func">Function</param>
         /// <param name="obj">State</param>
-        public ThreadItem(string name, WaitCallback func, object obj)
+        public ThreadItem(string name, WaitCallback func, object obj, bool logging = true)
         {
             Name = name;
             Function = func;
             State = obj;
+            Logging = logging;
         }
     }
 
@@ -85,12 +90,19 @@ namespace Xein
 
             // Add To Lists
             Threads.Add(item);
-            
+
             // Logging
-            ConsoleEx.Debug($"[Thread #{item.ManagedThreadId}] is Ready to run [{item.Function.Method.Name}]" + (item.State is not null ? $" with [{item.State}]" : ""));
-            
+            if (item.Logging)
+                ConsoleEx.Debug($"[Thread #{item.ManagedThreadId}] is Ready to run [{item.Function.Method.Name}]" + (item.State is not null ? $" with [{item.State}]" : ""));
+
+            // Start Thread/Function Time
+            var startTime = DateTime.Now;
+
             // Start Job
             item.Function(item.State);
+
+            if (item.Logging)
+                ConsoleEx.Log($"[Thread {item.ManagedThreadId}] Function Execute Time: {(DateTime.Now - startTime).TotalMilliseconds}");
 
             // Since end of func, remove from list for showing invalid number 'using' threads
             Threads.Remove(item);
