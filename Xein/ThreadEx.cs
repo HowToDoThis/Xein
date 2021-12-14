@@ -97,7 +97,7 @@ namespace Xein
             item.Function(item.State);
 
             if (item.Logging)
-                ConsoleEx.Log($"[Thread {item.ManagedThreadId}] Function Execute Time: {(DateTime.Now - startTime).TotalMilliseconds}");
+                ConsoleEx.Log($"[Thread {item.ManagedThreadId}] Function Execute Time: {(DateTime.Now - startTime).TotalMilliseconds}ms");
 
             // Since end of func, remove from list for showing invalid number 'using' threads
             Threads.Remove(item);
