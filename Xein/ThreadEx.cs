@@ -27,10 +27,6 @@ namespace Xein
         /// </summary>
         public WaitCallback Function { get; internal set; }
         /// <summary>
-        /// Thread Signal (For Controlling Thread)
-        /// </summary>
-        public ManualResetEvent Signal { get; internal set; } = new(false);
-        /// <summary>
         /// Running Thread
         /// </summary>
         public Thread Thread { get; set; }
@@ -71,7 +67,7 @@ namespace Xein
     /// </summary>
     public static class ThreadEx
     {
-        public static List<ThreadItem> Threads = new();
+        public static List<ThreadItem> Threads { get; private set; } = new();
 
         private static void DummyThreadFunction(object state)
         {
@@ -83,10 +79,9 @@ namespace Xein
                 return;
             }
 
-            th.Name = item.Name;
             item.Thread = th;
             item.ManagedThreadId = th.ManagedThreadId;
-            item.Signal.Set();
+            th.Name = item.Name;
 
             // Add To Lists
             Threads.Add(item);
@@ -116,9 +111,6 @@ namespace Xein
         {
             var item = new ThreadItem(name, func);
             ThreadPool.QueueUserWorkItem(new(DummyThreadFunction), item);
-
-            item.Signal.WaitOne();
-
             return item.Thread is null ? null : item.Thread;
         }
 
@@ -130,37 +122,6 @@ namespace Xein
         {
             var item = new ThreadItem(name, func, state);
             ThreadPool.QueueUserWorkItem(new(DummyThreadFunction), item);
-
-            item.Signal.WaitOne();
-
-            return item.Thread is null ? null : item.Thread;
-        }
-
-        /// <summary>
-        /// Create a Unsafe Thread
-        /// </summary>
-        /// <returns>Thread that running with this function</returns>
-        public static Thread CreateUnsafe(string name, WaitCallback func)
-        {
-            var item = new ThreadItem(name, func);
-            ThreadPool.UnsafeQueueUserWorkItem(new(DummyThreadFunction), item);
-
-            item.Signal.WaitOne();
-
-            return item.Thread is null ? null : item.Thread;
-        }
-
-        /// <summary>
-        /// Create a Unsafe Thread
-        /// </summary>
-        /// <returns>Thread that running with this function</returns>
-        public static Thread CreateUnsafe(string name, WaitCallback func, object state)
-        {
-            var item = new ThreadItem(name, func, state);
-            ThreadPool.UnsafeQueueUserWorkItem(new(DummyThreadFunction), item);
-
-            item.Signal.WaitOne();
-
             return item.Thread is null ? null : item.Thread;
         }
     }
