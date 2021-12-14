@@ -107,9 +107,9 @@ namespace Xein
         /// Create a Thread
         /// </summary>
         /// <returns>Thread that running with this function</returns>
-        public static Thread Create(string name, WaitCallback func)
+        public static Thread Create(string name, WaitCallback func, bool logging = true)
         {
-            var item = new ThreadItem(name, func);
+            var item = new ThreadItem(name, func, logging);
             ThreadPool.QueueUserWorkItem(new(DummyThreadFunction), item);
             return item.Thread is null ? null : item.Thread;
         }
@@ -118,9 +118,9 @@ namespace Xein
         /// Create a Thread
         /// </summary>
         /// <returns>Thread that running with this function</returns>
-        public static Thread Create(string name, WaitCallback func, object state)
+        public static Thread Create(string name, WaitCallback func, object state, bool logging = true)
         {
-            var item = new ThreadItem(name, func, state);
+            var item = new ThreadItem(name, func, state, logging);
             ThreadPool.QueueUserWorkItem(new(DummyThreadFunction), item);
             return item.Thread is null ? null : item.Thread;
         }
