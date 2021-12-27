@@ -88,7 +88,7 @@ namespace Xein
 
             // Logging
             if (item.Logging)
-                ConsoleEx.Debug($"[Thread #{item.ManagedThreadId}] is Ready to run [{item.Function.Method.Name}]" + (item.State is not null ? $" with [{item.State}]" : ""));
+                ConsoleEx.Debug($"[Thread {item.Name}] is Ready to run [{item.Function.Method.Name}]" + (item.State is not null ? $" with [{item.State.GetType().Name}]" : ""));
 
             // Start Thread/Function Time
             var startTime = DateTime.Now;
@@ -97,7 +97,7 @@ namespace Xein
             item.Function(item.State);
 
             if (item.Logging)
-                ConsoleEx.Log($"[Thread {item.ManagedThreadId}] Function Execute Time: {(DateTime.Now - startTime).TotalMilliseconds}ms");
+                ConsoleEx.Log($"[Thread {item.Name}] Function Execute Time: {(DateTime.Now - startTime).TotalMilliseconds}ms");
 
             // Since end of func, remove from list for showing invalid number 'using' threads
             Threads.Remove(item);
