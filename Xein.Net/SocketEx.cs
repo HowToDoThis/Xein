@@ -94,7 +94,7 @@ namespace Xein.Net
             }
             catch (SocketException e)
             {
-                return e.ErrorCode;
+                return -e.ErrorCode;
             }
         }
 
