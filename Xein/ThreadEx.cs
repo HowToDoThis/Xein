@@ -100,7 +100,8 @@ namespace Xein
                 ConsoleEx.Log($"[Thread {item.Name}] Function Execute Time: {(DateTime.Now - startTime).TotalMilliseconds}ms");
 
             // Since end of func, remove from list for showing invalid number 'using' threads
-            Threads.Remove(item);
+            lock (Threads)
+                Threads.Remove(item);
         }
 
         /// <summary>
