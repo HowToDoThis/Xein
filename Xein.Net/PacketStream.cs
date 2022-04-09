@@ -215,7 +215,7 @@ namespace Xein.Net
             return ReadSize(StreamLength - (int)GetPos());
         }
 
-        public byte[] GetBuffer => Stream.GetBuffer();
+        public byte[] GetBuffer() => Stream.GetBuffer();
 
         public long GetPos() => Stream.Position;
 
