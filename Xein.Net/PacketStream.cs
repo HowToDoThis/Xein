@@ -217,6 +217,12 @@ namespace Xein.Net
 
         public byte[] GetBuffer() => Stream.GetBuffer();
 
+        public byte[] GetData()
+        {
+            Stream.Seek(0, SeekOrigin.Begin);
+            return Stream.ToArray();
+        }
+        
         public long GetPos() => Stream.Position;
 
         public void SetPos(long pos)
