@@ -7,9 +7,8 @@ namespace Xein.Net
 {
     public class PacketStream
     {
-        MemoryStream Stream { get; set; }
+        public MemoryStream Stream { get; private set; }
 
-        public int OwnPos { get; set; } = 0;
         public int StreamLength { get; private set; } = 0;
 
 
@@ -211,11 +210,12 @@ namespace Xein.Net
 
         #endregion
 
-        public byte[] GetData()
+        public byte[] GetLeftover()
         {
-            Stream.Seek(0, SeekOrigin.Begin);
-            return Stream.ToArray();
+            return ReadSize(StreamLength - (int)GetPos());
         }
+
+        public byte[] GetBuffer => Stream.GetBuffer();
 
         public long GetPos() => Stream.Position;
 
