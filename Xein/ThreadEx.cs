@@ -75,7 +75,7 @@ namespace Xein
 
             if (state is not ThreadItem item)
             {
-                ConsoleEx.Error($"[Thread #{th.ManagedThreadId}] Has no ThreadItem. Returning.");
+                Console.WriteLine($"[Thread #{th.ManagedThreadId}] Has no ThreadItem. Returning.");
                 return;
             }
 
