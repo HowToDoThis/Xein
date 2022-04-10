@@ -62,65 +62,52 @@ namespace Xein.Net
 
         public byte ReadByte()
         {
-            if (StreamLength - Stream.Position < sizeof(byte))
-                return 0;
-            return Convert.ToByte(Stream.ReadByte());
+            return StreamLength - Stream.Position < sizeof(byte) ? (byte)0 : Convert.ToByte(Stream.ReadByte());
         }
 
         public short ReadShort()
         {
-            if (StreamLength - Stream.Position < sizeof(short))
-                return 0;
-            return BitConverter.ToInt16(Read<short>());
+            return StreamLength - Stream.Position < sizeof(short) ? (short)0 : BitConverter.ToInt16(Read<short>());
         }
 
         public ushort ReadUShort()
         {
-            if (StreamLength - Stream.Position < sizeof(ushort))
-                return 0;
-            return BitConverter.ToUInt16(Read<ushort>());
+            return StreamLength - Stream.Position < sizeof(ushort) ? (ushort)0 : BitConverter.ToUInt16(Read<ushort>());
+        }
+
+        public int ReadInt24()
+        {
+            return StreamLength - Stream.Position < 3 ? 0 : BitConverter.ToInt32(new byte[] { ReadByte(), ReadByte(), ReadByte(), 0 });
         }
 
         public int ReadInt()
         {
-            if (StreamLength - Stream.Position < sizeof(int))
-                return 0;
-            return BitConverter.ToInt32(Read<int>());
+            return StreamLength - Stream.Position < sizeof(int) ? 0 : BitConverter.ToInt32(Read<int>());
         }
 
         public uint ReadUInt()
         {
-            if (StreamLength - Stream.Position < sizeof(uint))
-                return 0;
-            return BitConverter.ToUInt32(Read<uint>());
+            return StreamLength - Stream.Position < sizeof(uint) ? 0 : BitConverter.ToUInt32(Read<uint>());
         }
 
         public long ReadLong()
         {
-            if (StreamLength - Stream.Position < sizeof(long))
-                return 0;
-            return BitConverter.ToInt64(Read<long>());
+            return StreamLength - Stream.Position < sizeof(long) ? 0 : BitConverter.ToInt64(Read<long>());
         }
 
         public ulong ReadULong()
         {
-            if (StreamLength - Stream.Position < sizeof(ulong))
-                return 0;
-            return BitConverter.ToUInt64(Read<ulong>());
+            return StreamLength - Stream.Position < sizeof(ulong) ? 0 : BitConverter.ToUInt64(Read<ulong>());
         }
 
         public float ReadFloat()
         {
-            if (StreamLength - Stream.Position < sizeof(float))
-                return 0;
-            return BitConverter.ToSingle(Read<float>());
+            return StreamLength - Stream.Position < sizeof(float) ? 0 : BitConverter.ToSingle(Read<float>());
         }
 
         public double ReadDouble()
         {
-            if (StreamLength - Stream.Position < sizeof(double))
-                return 0;
-            return BitConverter.ToDouble(Read<double>());
+            return StreamLength - Stream.Position < sizeof(double) ? 0 : BitConverter.ToDouble(Read<double>());
         }
 
         private byte[] Read<T>() where T : unmanaged
@@ -164,6 +151,8 @@ namespace Xein.Net
         {
             Stream.Write(BitConverter.GetBytes(data));
         }
+
+        public void WriteInt24(int data) => Write(BitConverter.GetBytes(data)[..2]);
 
         public void WriteInt32(int data) => Write(data);
         public void Write(int data)
