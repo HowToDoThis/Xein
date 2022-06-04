@@ -146,7 +146,7 @@ namespace Xein.Net
         public void WriteInt24(int data) => Write(BitConverter.GetBytes(data)[..2]);
 
         public void WriteInt32(int data) => Stream.Write(BitConverter.GetBytes(data));
-        public void WriteUInt32(int data) => Stream.Write(BitConverter.GetBytes(data));
+        public void WriteUInt32(uint data) => Stream.Write(BitConverter.GetBytes(data));
 
         public void WriteInt64(long data) => Stream.Write(BitConverter.GetBytes(data));
         public void WriteUInt64(ulong data) => Stream.Write(BitConverter.GetBytes(data));
