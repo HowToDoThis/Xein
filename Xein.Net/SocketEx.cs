@@ -14,9 +14,6 @@ namespace Xein.Net
         public int TotalReceived { get; set; } = 0;
         public int TotalSent { get; set; } = 0;
 
-        public byte[] buffer = new byte[ushort.MaxValue];
-        public int bufRead = 0;
-
         /// <summary>
         /// Socket Extension
         /// </summary>
@@ -80,14 +77,12 @@ namespace Xein.Net
         /// <summary>
         /// Read data to buffer
         /// </summary>
-        public int Read()
+        /// <returns>received bytes, negative equals to Socket.ErrorCode</returns>
+        public int Read(byte[] data)
         {
-            ResetRead();
-
             try
             {
-                int ret = Socket.Receive(buffer);
-                bufRead = ret;
+                int ret = Socket.Receive(data);
                 TotalReceived += ret;
 
                 return ret;
@@ -99,20 +94,12 @@ namespace Xein.Net
         }
 
         /// <summary>
-        /// Reset buffer
-        /// </summary>
-        public void ResetRead()
-        {
-            Array.Clear(buffer, 0, buffer.Length);
-            bufRead = 0;
-        }
-
-        /// <summary>
         /// Close Connection
         /// </summary>
         public void Shutdown()
         {
-            Socket.Shutdown(SocketShutdown.Both);
+            if (Socket is not null)
+                Socket.Shutdown(SocketShutdown.Both);
         }
 
         /// <summary>
@@ -120,8 +107,11 @@ namespace Xein.Net
         /// </summary>
         public void Dispose()
         {
-            Shutdown();
-            Socket.Dispose();
+            if (Socket is not null)
+            {
+                Shutdown();
+                Socket.Dispose();
+            }
         }
     }
 }

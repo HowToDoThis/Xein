@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.IO;
 using System.Text;
 
@@ -7,17 +6,19 @@ namespace Xein.Net
 {
     public class PacketStream
     {
+        /// <summary>
+        /// Internal Stream
+        /// </summary>
         public MemoryStream Stream { get; private set; }
 
         public int StreamLength { get; private set; } = 0;
 
-
         /// <summary>
-        /// Create a 32KB Stream
+        /// Create a Stream
         /// </summary>
         public PacketStream()
         {
-            Stream = new MemoryStream(short.MaxValue);
+            Stream = new MemoryStream();
         }
 
         /// <summary>
@@ -30,25 +31,38 @@ namespace Xein.Net
         }
 
         #region Read
-
-        public string ReadString()
+        public string ReadStringA(int size = 0)
         {
             string buf = string.Empty;
-
-            char cur = Convert.ToChar(ReadByte());
-            while (cur != '\0')
+            if (size == 0)
             {
-                buf += cur.ToString();
-                cur = Convert.ToChar(ReadByte());
+                char cur = Convert.ToChar(ReadInt8());
+                while (cur != '\0')
+                {
+                    buf += cur;
+                    cur = Convert.ToChar(ReadInt8());
+                }
             }
+            else
+            {
+                for (int i = 0; i < size; i++)
+                    buf += Convert.ToChar(ReadInt8());
+            }
+            return buf;
+        }
 
+        public string ReadStringW(int size)
+        {
+            string buf = string.Empty;
+            for (int i = 0; i < size; i++)
+                buf += Convert.ToChar(ReadUInt16());
             return buf;
         }
 
         public byte[] ReadSize(int size)
         {
             if (StreamLength - Stream.Position < size)
-                return null;
+                return new byte[] { 0 };
 
             byte[] buf = new byte[size];
             Stream.Read(buf);
@@ -60,42 +74,42 @@ namespace Xein.Net
             Stream.Read(data);
         }
 
-        public byte ReadByte()
+        public byte ReadInt8()
         {
             return StreamLength - Stream.Position < sizeof(byte) ? (byte)0 : Convert.ToByte(Stream.ReadByte());
         }
 
-        public short ReadShort()
+        public short ReadInt16()
         {
             return StreamLength - Stream.Position < sizeof(short) ? (short)0 : BitConverter.ToInt16(Read<short>());
         }
 
-        public ushort ReadUShort()
+        public ushort ReadUInt16()
         {
             return StreamLength - Stream.Position < sizeof(ushort) ? (ushort)0 : BitConverter.ToUInt16(Read<ushort>());
         }
 
         public int ReadInt24()
         {
-            return StreamLength - Stream.Position < 3 ? 0 : BitConverter.ToInt32(new byte[] { ReadByte(), ReadByte(), ReadByte(), 0 });
+            return StreamLength - Stream.Position < 3 ? 0 : BitConverter.ToInt32(new byte[] { ReadInt8(), ReadInt8(), ReadInt8(), 0 });
         }
 
-        public int ReadInt()
+        public int ReadInt32()
         {
             return StreamLength - Stream.Position < sizeof(int) ? 0 : BitConverter.ToInt32(Read<int>());
         }
 
-        public uint ReadUInt()
+        public uint ReadUInt32()
         {
             return StreamLength - Stream.Position < sizeof(uint) ? 0 : BitConverter.ToUInt32(Read<uint>());
         }
 
-        public long ReadLong()
+        public long ReadInt64()
         {
             return StreamLength - Stream.Position < sizeof(long) ? 0 : BitConverter.ToInt64(Read<long>());
         }
 
-        public ulong ReadULong()
+        public ulong ReadUInt64()
         {
             return StreamLength - Stream.Position < sizeof(ulong) ? 0 : BitConverter.ToUInt64(Read<ulong>());
         }
@@ -110,108 +124,49 @@ namespace Xein.Net
             return StreamLength - Stream.Position < sizeof(double) ? 0 : BitConverter.ToDouble(Read<double>());
         }
 
-        private byte[] Read<T>() where T : unmanaged
+        private unsafe byte[] Read<T>() where T : unmanaged
         {
-            unsafe
-            {
-                byte[] buf = new byte[sizeof(T)];
-                Stream.Read(buf);
-                return buf;
-            }
+            byte[] buf = new byte[sizeof(T)];
+            Stream.Read(buf);
+            return buf;
         }
-
         #endregion
 
         #region Write
+        public void Write(byte[] data) => Stream.Write(data);
 
-        public void Write(byte[] data)
-        {
-            Stream.Write(data);
-        }
+        public void Write(bool data) => Stream.WriteByte(Convert.ToByte(data));
+        public void Write(Enum data) => Stream.WriteByte(Convert.ToByte(data));
 
-        public void WriteByte(int data) => Write((byte)data);
-        public void Write(byte data)
-        {
-            Stream.WriteByte(data);
-        }
+        public void WriteInt8(int data) => Stream.WriteByte((byte)data);
 
-        public void Write(bool data)
-        {
-            Stream.WriteByte(Convert.ToByte(data));
-        }
-
-        public void WriteInt16(int data) => Write((short)data);
-        public void Write(short data)
-        {
-            Stream.Write(BitConverter.GetBytes(data));
-        }
-
-        public void WriteUInt16(int data) => Write((ushort)data);
-        public void Write(ushort data)
-        {
-            Stream.Write(BitConverter.GetBytes(data));
-        }
+        public void WriteInt16(int data, bool isLE = true) => Stream.Write(BitConverter.GetBytes((short)data));
+        public void WriteUInt16(int data) => Stream.Write(BitConverter.GetBytes((ushort)data));
 
         public void WriteInt24(int data) => Write(BitConverter.GetBytes(data)[..2]);
 
-        public void WriteInt32(int data) => Write(data);
-        public void Write(int data)
-        {
-            Stream.Write(BitConverter.GetBytes(data));
-        }
+        public void WriteInt32(int data) => Stream.Write(BitConverter.GetBytes(data));
+        public void WriteUInt32(int data) => Stream.Write(BitConverter.GetBytes(data));
 
-        public void WriteUInt32(uint data) => Write(data);
-        public void Write(uint data)
-        {
-            Stream.Write(BitConverter.GetBytes(data));
-        }
+        public void WriteInt64(long data) => Stream.Write(BitConverter.GetBytes(data));
+        public void WriteUInt64(ulong data) => Stream.Write(BitConverter.GetBytes(data));
 
-        public void WriteInt64(long data) => Write(data);
-        public void Write(long data)
+        public void WriteStringA(string data)
         {
-            Stream.Write(BitConverter.GetBytes(data));
-        }
-
-        public void WriteUInt64(ulong data) => Write(data);
-        public void Write(ulong data)
-        {
-            Stream.Write(BitConverter.GetBytes(data));
-        }
-
-        public void Write(char data)
-        {
-            Stream.WriteByte(Convert.ToByte(data));
-        }
-
-        public void Write(string data, bool writeLength = false)
-        {
-            if (writeLength)
-                Write(data.Length);
-
             var test = Encoding.UTF8.GetBytes(data);
             Write(test);
         }
 
-        public void Write(Enum data)
+        public void WriteStringW(string data)
         {
-            Write(Convert.ToByte(data));
+            var test = Encoding.Unicode.GetBytes(data);
+            Write(test);
         }
-
         #endregion
 
-        public byte[] GetLeftover()
-        {
-            return ReadSize(StreamLength - (int)GetPos());
-        }
-
+        public byte[] GetLeftover() => ReadSize(StreamLength - (int)GetPos());
         public byte[] GetBuffer() => Stream.GetBuffer();
-
-        public byte[] GetData()
-        {
-            Stream.Seek(0, SeekOrigin.Begin);
-            return Stream.ToArray();
-        }
-        
+        public byte[] GetData() => Stream.ToArray();
         public long GetPos() => Stream.Position;
 
         public void SetPos(long pos)

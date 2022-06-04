@@ -125,5 +125,10 @@ namespace Xein
             ThreadPool.QueueUserWorkItem(new(DummyThreadFunction), item);
             return item.Thread is null ? null : item.Thread;
         }
+
+        public static void Sleep(int milisecond)
+        {
+            Thread.Sleep(milisecond);
+        }
     }
 }

@@ -12,13 +12,11 @@ namespace Xein
             for (int i = list.Count; i > 1; i--)
             {
                 int r = rand.Next(i + 1);
-                T value = list[r];
-                list[r] = list[i];
-                list[i] = value;
+                (list[i], list[r]) = (list[r], list[i]);
             }
         }
 
-        public static string ToStr(this byte[] arr)
+        public static string ToString(this byte[] arr)
         {
             return Encoding.UTF8.GetString(arr);
         }

@@ -33,6 +33,7 @@ namespace Xein.Net
         public SocketEx Socket { get; set; }
     }
 
+    [Obsolete("Not Yet Completed")]
     public class Server
     {
         #region Properties/Fields
@@ -247,20 +248,7 @@ namespace Xein.Net
                         continue;
                     }
 
-                    var readed = client.Read();
-                    if (client.bufRead == 0)
-                    {
-                        var error = (SocketError)readed;
-                        if (error != SocketError.WouldBlock)
-                        {
-                            ClientDisconnected?.Invoke(this, new() { Client = client, IP = client.IP, Time = client.ConnectedTime, Exception = error });
-                            Clients.Remove(client);
-                        }
-
-                        continue;
-                    }
-
-                    ReceivedTcpClientData?.Invoke(this, new() { Socket = client, EndPoint = client.Socket.RemoteEndPoint, ReceivedData = client.buffer.ToArray(), ReceivedSize = readed });
+                    //ReceivedTcpClientData?.Invoke(this, new() { Socket = client, EndPoint = client.Socket.RemoteEndPoint, ReceivedData = client.buffer.ToArray(), ReceivedSize = readed });
                 }
             }
 
