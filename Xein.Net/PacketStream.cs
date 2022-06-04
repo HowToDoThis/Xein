@@ -13,6 +13,8 @@ namespace Xein.Net
 
         public int StreamLength { get; private set; } = 0;
 
+        public bool IsLittleEndian { get; set; } = true;
+
         /// <summary>
         /// Create a Stream
         /// </summary>
@@ -135,6 +137,7 @@ namespace Xein.Net
         #region Write
         public void Write(byte[] data) => Stream.Write(data);
 
+        public void Write(byte data) => Stream.WriteByte(data);
         public void Write(bool data) => Stream.WriteByte(Convert.ToByte(data));
         public void Write(Enum data) => Stream.WriteByte(Convert.ToByte(data));
 
