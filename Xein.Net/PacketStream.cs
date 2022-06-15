@@ -4,6 +4,17 @@ using System.Text;
 
 namespace Xein.Net
 {
+    // extensions
+    public static class NetworkExtensions
+    {
+        public static byte[] Reverse(this byte[] bytes, bool isLE = true)
+        {
+            if (!isLE)
+                Array.Reverse(bytes);
+            return bytes;
+        }
+    }
+
     public class PacketStream
     {
         /// <summary>
@@ -12,8 +23,6 @@ namespace Xein.Net
         public MemoryStream Stream { get; private set; }
 
         public int StreamLength { get; private set; } = 0;
-
-        public bool IsLittleEndian { get; set; } = true;
 
         /// <summary>
         /// Create a Stream
@@ -81,49 +90,49 @@ namespace Xein.Net
             return StreamLength - Stream.Position < sizeof(byte) ? (byte)0 : Convert.ToByte(Stream.ReadByte());
         }
 
-        public short ReadInt16()
+        public short ReadInt16(bool isLE = true)
         {
-            return StreamLength - Stream.Position < sizeof(short) ? (short)0 : BitConverter.ToInt16(Read<short>());
+            return StreamLength - Stream.Position < sizeof(short) ? (short)0 : BitConverter.ToInt16(Read<short>().Reverse(isLE));
         }
 
-        public ushort ReadUInt16()
+        public ushort ReadUInt16(bool isLE = true)
         {
-            return StreamLength - Stream.Position < sizeof(ushort) ? (ushort)0 : BitConverter.ToUInt16(Read<ushort>());
+            return StreamLength - Stream.Position < sizeof(ushort) ? (ushort)0 : BitConverter.ToUInt16(Read<ushort>().Reverse(isLE));
         }
 
-        public int ReadInt24()
+        public int ReadInt24(bool isLE = true)
         {
-            return StreamLength - Stream.Position < 3 ? 0 : BitConverter.ToInt32(new byte[] { ReadInt8(), ReadInt8(), ReadInt8(), 0 });
+            return StreamLength - Stream.Position < 3 ? 0 : BitConverter.ToInt32(isLE ? new byte[] { ReadInt8(), ReadInt8(), ReadInt8(), 0 } : new byte[] { 0, ReadInt8(), ReadInt8(), ReadInt8() });
         }
 
-        public int ReadInt32()
+        public int ReadInt32(bool isLE = true)
         {
-            return StreamLength - Stream.Position < sizeof(int) ? 0 : BitConverter.ToInt32(Read<int>());
+            return StreamLength - Stream.Position < sizeof(int) ? 0 : BitConverter.ToInt32(Read<int>().Reverse(isLE));
         }
 
-        public uint ReadUInt32()
+        public uint ReadUInt32(bool isLE = true)
         {
-            return StreamLength - Stream.Position < sizeof(uint) ? 0 : BitConverter.ToUInt32(Read<uint>());
+            return StreamLength - Stream.Position < sizeof(uint) ? 0 : BitConverter.ToUInt32(Read<uint>().Reverse(isLE));
         }
 
-        public long ReadInt64()
+        public long ReadInt64(bool isLE = true)
         {
-            return StreamLength - Stream.Position < sizeof(long) ? 0 : BitConverter.ToInt64(Read<long>());
+            return StreamLength - Stream.Position < sizeof(long) ? 0 : BitConverter.ToInt64(Read<long>().Reverse(isLE));
         }
 
-        public ulong ReadUInt64()
+        public ulong ReadUInt64(bool isLE = true)
         {
-            return StreamLength - Stream.Position < sizeof(ulong) ? 0 : BitConverter.ToUInt64(Read<ulong>());
+            return StreamLength - Stream.Position < sizeof(ulong) ? 0 : BitConverter.ToUInt64(Read<ulong>().Reverse(isLE));
         }
 
-        public float ReadFloat()
+        public float ReadFloat(bool isLE = true)
         {
-            return StreamLength - Stream.Position < sizeof(float) ? 0 : BitConverter.ToSingle(Read<float>());
+            return StreamLength - Stream.Position < sizeof(float) ? 0 : BitConverter.ToSingle(Read<float>().Reverse(isLE));
         }
 
-        public double ReadDouble()
+        public double ReadDouble(bool isLE = true)
         {
-            return StreamLength - Stream.Position < sizeof(double) ? 0 : BitConverter.ToDouble(Read<double>());
+            return StreamLength - Stream.Position < sizeof(double) ? 0 : BitConverter.ToDouble(Read<double>().Reverse(isLE));
         }
 
         private unsafe byte[] Read<T>() where T : unmanaged
