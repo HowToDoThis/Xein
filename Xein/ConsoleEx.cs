@@ -20,8 +20,8 @@ namespace Xein
     /// </summary>
     public class ConsoleItem
     {
-        public string Message { get; private set; } = string.Empty;
-        public ConsoleType MessageType { get; private set; } = ConsoleType.Normal;
+        private string Message { get; }
+        private ConsoleType MessageType { get; }
 
         public ConsoleItem(string msg, ConsoleType type = ConsoleType.Normal)
         {
@@ -36,6 +36,7 @@ namespace Xein
 
             switch (MessageType)
             {
+                default:
                 case ConsoleType.Normal:
                     Console.ForegroundColor = ConsoleColor.White;
                     Console.WriteLine(Message);
@@ -65,51 +66,36 @@ namespace Xein
     /// </summary>
     public class ConsoleEx
     {
-        public static StreamWriter Logger { get; private set; } = new StreamWriter(File.Open("Console.log", FileMode.Create, FileAccess.ReadWrite), Encoding.UTF8);
+        public static StreamWriter Logger { get; } = new StreamWriter(File.Open("Console.log", FileMode.Create, FileAccess.ReadWrite), Encoding.UTF8);
 
         /// <summary>
         /// Get Time 
         /// </summary>
         /// <returns>Short Time String</returns>
-        private static string GetTime()
-        {
-            return DateTime.Now.ToShortDateString() + " " + DateTime.Now.ToShortTimeString();
-        }
+        private static string GetTime() => $"{DateTime.Now.ToShortDateString()} {DateTime.Now.ToShortTimeString()}";
 
         /// <summary>
         /// Add A Warn Message
         /// </summary>
         /// <param name="msg">Message</param>
-        public static void Warn(string msg)
-        {
-            new ConsoleItem($"[{GetTime()}] [WARN] {msg}", ConsoleType.Warn).Print();
-        }
+        public static void Warn(string msg) => new ConsoleItem($"[{GetTime()}] [WARN] {msg}", ConsoleType.Warn).Print();
 
         /// <summary>
         /// Add A Error Message
         /// </summary>
         /// <param name="msg">Message</param>
-        public static void Error(string msg)
-        {
-            new ConsoleItem($"[{GetTime()}] [ERROR] {msg}", ConsoleType.Error).Print();
-        }
+        public static void Error(string msg) => new ConsoleItem($"[{GetTime()}] [ERROR] {msg}", ConsoleType.Error).Print();
 
         /// <summary>
         /// Add A Message
         /// </summary>
         /// <param name="msg">Message</param>
-        public static void Log(string msg)
-        {
-            new ConsoleItem($"[{GetTime()}] {msg}", ConsoleType.Normal).Print();
-        }
+        public static void Log(string msg) => new ConsoleItem($"[{GetTime()}] {msg}").Print();
 
         /// <summary>
         /// Add A Debug Message
         /// </summary>
         /// <param name="msg">Message</param>
-        public static void Debug(string msg)
-        {
-            new ConsoleItem($"[{GetTime()}] [DEBUG] {msg}", ConsoleType.Debug).Print();
-        }
+        public static void Debug(string msg) => new ConsoleItem($"[{GetTime()}] [DEBUG] {msg}", ConsoleType.Debug).Print();
     }
 }
