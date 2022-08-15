@@ -6,13 +6,13 @@ namespace Xein.Net
 {
     public class SocketEx
     {
-        public Socket Socket { get; set; } = null;
+        public Socket Socket { get; set; }
         public DateTime ConnectedTime { get; set; }
-        public Guid GUID { get; private set; } = Guid.NewGuid();
+        public Guid Guid { get; private set; } = Guid.NewGuid();
 
-        public string IP { get; set; } = string.Empty;
-        public int TotalReceived { get; set; } = 0;
-        public int TotalSent { get; set; } = 0;
+        public string Ip { get; set; }
+        public int TotalReceived { get; set; }
+        public int TotalSent { get; set; }
 
         /// <summary>
         /// Socket Extension
@@ -22,8 +22,8 @@ namespace Xein.Net
             Socket = socket;
             ConnectedTime = DateTime.Now;
 
-            IP = ((IPEndPoint)Socket.RemoteEndPoint).Address.ToString();
-            IP = IP[(IP.LastIndexOf(':') + 1)..];
+            Ip = ((IPEndPoint)Socket.RemoteEndPoint)?.Address.ToString();
+            Ip = Ip?[(Ip.LastIndexOf(':') + 1)..];
         }
 
         /// <summary>

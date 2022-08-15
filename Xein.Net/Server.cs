@@ -214,7 +214,7 @@ namespace Xein.Net
 
                 Clients.Add(ex);
 
-                ClientConnected?.Invoke(this, new() { Client = ex, IP = ex.IP, Time = ex.ConnectedTime });
+                ClientConnected?.Invoke(this, new() { Client = ex, IP = ex.Ip, Time = ex.ConnectedTime });
             }
             catch
             {
@@ -243,7 +243,7 @@ namespace Xein.Net
                 {
                     if (!client.IsStillAlive())
                     {
-                        ClientDisconnected?.Invoke(this, new() { Client = client, IP = client.IP, Time = client.ConnectedTime });
+                        ClientDisconnected?.Invoke(this, new() { Client = client, IP = client.Ip, Time = client.ConnectedTime });
                         Clients.Remove(client);
                         continue;
                     }
