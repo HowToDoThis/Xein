@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Text.Unicode;
 
 namespace Xein
@@ -35,7 +36,14 @@ namespace Xein
         public static T JsonObject<T>(this string data) => JsonSerializer.Deserialize<T>(data);
         public static T JsonObjectFile<T>(this string data) => JsonObject<T>(File.ReadAllText(data));
         #endregion
-        
+
+        #region Rate / Luck
+        public static int Random(this int number, int min = 0, int seed = 0)
+            => new Random(seed).Next(number, min);
+        public static bool TestLuck(this int currentChance, int max = 100, int seed = 0)
+            => currentChance >= new Random(seed).Next(max);
+        #endregion
+
         public static void Randomize<T>(this IList<T> list)
         {
             Random rand = new();
@@ -44,6 +52,15 @@ namespace Xein
                 var r = rand.Next(i + 1);
                 (list[i], list[r]) = (list[r], list[i]);
             }
+        }
+
+        public static int GetChineseStringCount(this string str)
+        {
+            List<string> lists = new();
+            Regex rgx = new(@"\p{IsCJKUnifiedIdeographs}");
+            foreach (Match match in rgx.Matches(str))
+                lists.Add(match.Value);
+            return lists.Count;
         }
 
         public static string ToString(this byte[] arr)
