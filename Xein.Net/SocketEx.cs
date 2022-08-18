@@ -53,6 +53,7 @@ namespace Xein.Net
 
         #region GetXXX
         public Socket GetSocket() => Socket;
+        public long GetAvailable() => Socket.Available;
         #endregion
         
         /// <summary>
