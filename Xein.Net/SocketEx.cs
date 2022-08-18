@@ -6,13 +6,14 @@ namespace Xein.Net
 {
     public class SocketEx
     {
-        public Socket Socket { get; set; }
-        public DateTime ConnectedTime { get; set; }
-        public Guid Guid { get; private set; } = Guid.NewGuid();
+        private Socket Socket { get; }
+        public DateTime ConnectedTime { get; }
+        public Guid Guid { get; } = Guid.NewGuid();
 
-        public string Ip { get; set; }
-        public int TotalReceived { get; set; }
-        public int TotalSent { get; set; }
+        public string Ip { get; }
+        public int Port => ((IPEndPoint)Socket.RemoteEndPoint)!.Port;
+        public int TotalReceived { get; private set; }
+        public int TotalSent { get; private set; }
 
         /// <summary>
         /// Socket Extension
@@ -26,42 +27,17 @@ namespace Xein.Net
             Ip = Ip?[(Ip.LastIndexOf(':') + 1)..];
         }
 
-        /// <summary>
-        /// Sent data to End Socket
-        /// </summary>
-        public int Send(byte[] data)
-        {
-            try
-            {
-                int ret = Socket.Send(data);
-                TotalSent += ret;
-
-                return ret;
-            }
-            catch (SocketException e)
-            {
-                return e.ErrorCode;
-            }
-        }
-
+        #region IsXXX
         public bool IsStillAlive()
         {
-            if (Socket.Poll(1000, SelectMode.SelectRead))
-                if (Socket.Available == 0)
-                    if (!IsSocketStillAlive())
-                        return false;
-
-            return true;
+            return !Socket.Poll(1000, SelectMode.SelectRead) || (Socket.Available != 0 || IsSocketStillAlive());
         }
 
-        public bool IsSocketStillAlive()
+        private bool IsSocketStillAlive()
         {
             try
             {
-                byte[] nul = new byte[1];
-                nul[0] = 0;
-                Socket.Send(nul);
-
+                Socket.Send(new byte[] {0});
                 return true;
             }
             catch (SocketException e)
@@ -73,7 +49,30 @@ namespace Xein.Net
 
             return false;
         }
+        #endregion
 
+        #region GetXXX
+        public Socket GetSocket() => Socket;
+        #endregion
+        
+        /// <summary>
+        /// Sent data to End Socket
+        /// </summary>
+        public int Send(byte[] data)
+        {
+            try
+            {
+                var ret = Socket.Send(data);
+                TotalSent += ret;
+
+                return ret;
+            }
+            catch (SocketException e)
+            {
+                return e.ErrorCode;
+            }
+        }
+        
         /// <summary>
         /// Read data to buffer
         /// </summary>
@@ -82,7 +81,7 @@ namespace Xein.Net
         {
             try
             {
-                int ret = Socket.Receive(data);
+                var ret = Socket.Receive(data);
                 TotalReceived += ret;
 
                 return ret;
@@ -94,24 +93,11 @@ namespace Xein.Net
         }
 
         /// <summary>
-        /// Close Connection
-        /// </summary>
-        public void Shutdown()
-        {
-            if (Socket is not null)
-                Socket.Shutdown(SocketShutdown.Both);
-        }
-
-        /// <summary>
         /// Close Socket and Dispose
         /// </summary>
         public void Dispose()
         {
-            if (Socket is not null)
-            {
-                Shutdown();
-                Socket.Dispose();
-            }
+            Socket?.Dispose();
         }
     }
 }
