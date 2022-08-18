@@ -7,45 +7,45 @@ namespace Xein.Net
     {
         public delegate void ExecuteFunction(HttpListenerRequest request, HttpListenerResponse response);
 
-        public readonly HttpListener Listener;
-        public bool IsStarted;
+        private readonly HttpListener listener;
+        private bool isStarted;
 
         public ExecuteFunction OnReceiveContext;
 
         public HttpServer(int port, bool isLocal = false)
         {
-            Listener = new();
-            Listener.Prefixes.Add($"http://{(isLocal ? "localhost" : "+")}:{port}/");
+            listener = new();
+            listener.Prefixes.Add($"http://{(isLocal ? "localhost" : "+")}:{port}/");
         }
 
         public void Start()
         {
-            if (IsStarted)
+            if (isStarted)
                 return;
 
-            IsStarted = true;
-            Listener.Start();
-            Listener.BeginGetContext(HttpServer_Callback, null);
+            isStarted = true;
+            listener.Start();
+            listener.BeginGetContext(HttpServer_Callback, null);
         }
 
         public void Stop()
         {
-            if (!IsStarted)
+            if (!isStarted)
                 return;
 
-            IsStarted = false;
-            Listener.Stop();
+            isStarted = false;
+            listener.Stop();
         }
 
         private void HttpServer_Callback(IAsyncResult result)
         {
-            if (!IsStarted)
+            if (!isStarted)
                 return;
 
             try
             {
-                var context = Listener.EndGetContext(result);
-                Listener.BeginGetContext(HttpServer_Callback, null);
+                var context = listener.EndGetContext(result);
+                listener.BeginGetContext(HttpServer_Callback, null);
 
                 var request = context.Request;
                 var response = context.Response;
