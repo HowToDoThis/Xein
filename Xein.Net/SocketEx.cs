@@ -30,9 +30,12 @@ namespace Xein.Net
         #region IsXXX
         public bool IsStillAlive()
         {
-            return !Socket.Poll(1000, SelectMode.SelectRead) || (Socket.Available != 0 || IsSocketStillAlive());
+            if (Socket.Poll(1000, SelectMode.SelectRead))
+                if (Socket.Available == 0)
+                    if (!IsSocketStillAlive())
+                        return false;
+            return true;
         }
-
         private bool IsSocketStillAlive()
         {
             try
