@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Threading;
 
 namespace Xein
@@ -67,7 +67,7 @@ namespace Xein
     /// </summary>
     public static class ThreadEx
     {
-        public static List<ThreadItem> Threads { get; private set; } = new();
+        public static ConcurrentDictionary<ThreadItem, Thread> Threads { get; private set; } = new();
 
         private static void DummyThreadFunction(object state)
         {
@@ -83,25 +83,18 @@ namespace Xein
             item.ManagedThreadId = th.ManagedThreadId;
             th.Name = item.Name;
 
-            // Add To Lists
-            Threads.Add(item);
+            Threads.TryAdd(item, th);
 
-            // Logging
             if (item.Logging)
                 ConsoleEx.Debug($"[Thread {item.Name}] is Ready to run [{item.Function.Method.Name}]" + (item.State is not null ? $" with [{item.State.GetType().Name}]" : ""));
 
-            // Start Thread/Function Time
             var startTime = DateTime.Now;
-
-            // Start Job
             item.Function(item.State);
 
             if (item.Logging)
                 ConsoleEx.Log($"[Thread {item.Name}] Function Execute Time: {(DateTime.Now - startTime).TotalMilliseconds}ms");
 
-            // Since end of func, remove from list for showing invalid number 'using' threads
-            lock (Threads)
-                Threads.Remove(item);
+            Threads.TryRemove(item, out _);
         }
 
         /// <summary>
