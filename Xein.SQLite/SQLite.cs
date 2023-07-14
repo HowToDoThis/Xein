@@ -1,7 +1,10 @@
 ﻿/*
  * Project Used: https://github.com/praeclarum/sqlite-net/commit/e8a24a8b2ecb4fd700c5fe46062239a9b08472fd
- * Implemented Forks:
- * - 
+ * Implemented PR:
+ * - Support for JSON1 extension #752: https://github.com/praeclarum/sqlite-net/pull/752
+ * - Fix AutoIncPK when PK is not of type integer #638: https://github.com/praeclarum/sqlite-net/pull/638
+ * - ToUpperInvarient is faster and reliable. #1165: https://github.com/praeclarum/sqlite-net/pull/1165
+ * - Fixes [Ignore] attr not working #1119: https://github.com/praeclarum/sqlite-net/pull/1119
  * 
  * NOTE: REMOVED NOT USED STUFFS, Cause This Project are easier for Desktop more than Web/Mobile
  */
@@ -18,6 +21,9 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 using System.Threading;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Json;
+using System.IO;
 
 #if USE_SQLITEPCL_RAW
 using Sqlite3DatabaseHandle = SQLitePCL.sqlite3;
@@ -374,11 +380,11 @@ namespace SQLite
 #if USE_SQLITEPCL_RAW
             var r = SQLite3.Open(connectionString.DatabasePath, out var handle, (int)connectionString.OpenFlags, connectionString.VfsName);
 #else
-			// open using the byte[]
-			// in the case where the path may include Unicode
-			// force open to using UTF-8 using sqlite3_open_v2
-			var databasePathAsBytes = GetNullTerminatedUtf8(connectionString.DatabasePath);
-			var r = SQLite3.Open (databasePathAsBytes, out var handle, (int)connectionString.OpenFlags, connectionString.VfsName);
+            // open using the byte[]
+            // in the case where the path may include Unicode
+            // force open to using UTF-8 using sqlite3_open_v2
+            var databasePathAsBytes = GetNullTerminatedUtf8(connectionString.DatabasePath);
+            var r = SQLite3.Open (databasePathAsBytes, out var handle, (int)connectionString.OpenFlags, connectionString.VfsName);
 #endif
 
             Handle = handle;
@@ -2576,7 +2582,7 @@ namespace SQLite
             var cols = new List<Column>(members.Count);
             foreach (var m in members)
             {
-                var ignore = m.IsDefined(typeof(IgnoreAttribute), true);
+                var ignore = IsIgnored(type, m);
                 if (!ignore)
                     cols.Add(new Column(m, createFlags));
             }
@@ -2598,6 +2604,29 @@ namespace SQLite
 
             _insertColumns = Columns.Where(c => !c.IsAutoInc).ToArray();
             _insertOrReplaceColumns = Columns.ToArray();
+        }
+
+        private bool IsIgnored(Type declaringType, MemberInfo m)
+        {
+            var attributes = m.GetCustomAttributes(typeof(IgnoreAttribute), true);
+            if (attributes.Any(x => x is IgnoreAttribute))
+                return true;
+
+            if (declaringType.BaseType == null)
+                return false;
+
+            var newDeclaringType = declaringType;
+            var newMember = m;
+            do
+            {
+                newDeclaringType = newDeclaringType.BaseType;
+                if (newDeclaringType == null)
+                    return false;
+                newMember = newDeclaringType.GetMember(m.Name).FirstOrDefault();
+
+            } while (newMember == null);
+
+            return IsIgnored(newDeclaringType, newMember);
         }
 
         private IReadOnlyCollection<MemberInfo> GetPublicMembers(Type type)
@@ -2666,7 +2695,7 @@ namespace SQLite
             if (Method != MapMethod.ByName)
                 throw new InvalidOperationException($"This {nameof(TableMapping)} is not mapped by name, but {Method}.");
 
-            var exact = Columns.FirstOrDefault(c => c.Name.ToLower() == columnName.ToLower());
+            var exact = Columns.FirstOrDefault(c => c.Name.ToLowerInvariant() == columnName.ToLowerInvariant());
             return exact;
         }
 
@@ -2721,7 +2750,6 @@ namespace SQLite
 
                 var isAuto = Orm.IsAutoInc(member) || (IsPK && ((createFlags & CreateFlags.AutoIncPK) == CreateFlags.AutoIncPK));
                 IsAutoGuid = isAuto && ColumnType == typeof(Guid);
-                IsAutoInc = isAuto && !IsAutoGuid;
 
                 Indices = Orm.GetIndices(member);
                 if (!Indices.Any()
@@ -2736,6 +2764,7 @@ namespace SQLite
                 MaxStringLength = Orm.MaxStringLength(member);
 
                 StoreAsText = memberType.GetTypeInfo().CustomAttributes.Any(x => x.AttributeType == typeof(StoreAsTextAttribute));
+                IsAutoInc = isAuto && !IsAutoGuid && Orm.CanBeAutoIncPK(this);
             }
 
             public Column(PropertyInfo member, CreateFlags createFlags = CreateFlags.None)
@@ -2886,7 +2915,11 @@ namespace SQLite
         public static string SqlType(TableMapping.Column p, bool storeDateTimeAsTicks, bool storeTimeSpanAsTicks)
         {
             var clrType = p.ColumnType;
-            if (clrType == typeof(bool) || clrType == typeof(byte) || clrType == typeof(ushort) || clrType == typeof(sbyte) || clrType == typeof(short) || clrType == typeof(int) || clrType == typeof(uint) || clrType == typeof(long))
+            if (clrType == typeof(bool) || 
+                clrType == typeof(byte) || clrType == typeof(sbyte) ||
+                clrType == typeof(ushort) || clrType == typeof(short) || 
+                clrType == typeof(int) || clrType == typeof(uint) || 
+                clrType == typeof(long) || clrType == typeof(ulong))
             {
                 return "INTERGER";
             }
@@ -2923,6 +2956,10 @@ namespace SQLite
             {
                 return "VARCHAR(36)";
             }
+            else if (clrType.GetTypeInfo().IsDefined(typeof(DataContractAttribute)))
+            {
+                return SQLite3.LibVersionNumber() >= 3009000 ? "JSON" : "TEXT";
+            }
             else
             {
                 throw new NotSupportedException("Don't know about " + clrType);
@@ -2948,6 +2985,11 @@ namespace SQLite
                  })
                  .FirstOrDefault()) ?? "";
 #endif
+        }
+
+        public static bool CanBeAutoIncPK(TableMapping.Column column)
+        {
+            return string.Equals(SqlType(column, false, false), "INTEGER", StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool IsAutoInc(MemberInfo p)
@@ -3297,7 +3339,7 @@ namespace SQLite
                 {
                     SQLite3.BindInt(stmt, index, b ? 1 : 0);
                 }
-                else if (value is uint || value is long)
+                else if (value is uint || value is long || value is ulong)
                 {
                     SQLite3.BindInt64(stmt, index, Convert.ToInt64(value));
                 }
@@ -3351,6 +3393,14 @@ namespace SQLite
                 {
                     SQLite3.BindText(stmt, index, ub.ToString(), -1, NegativePointer);
                 }
+                else if (value.GetType().GetTypeInfo().IsDefined(typeof(DataContractAttribute)))
+                {
+                    using var stream = new MemoryStream();
+                    new DataContractJsonSerializer(value.GetType()).WriteObject(stream, value);
+                    var bytes = stream.ToArray();
+                    var json = Encoding.UTF8.GetString(bytes);
+                    SQLite3.BindText(stmt, index, json, -1, NegativePointer);
+                }
                 else
                 {
                     // Now we could possibly get an enum, retrieve cached info
@@ -3402,17 +3452,21 @@ namespace SQLite
                 {
                     return (int)SQLite3.ColumnInt(stmt, index);
                 }
+                else if (clrType == typeof(uint))
+                {
+                    return (uint)SQLite3.ColumnInt64(stmt, index);
+                }
                 else if (clrType == typeof(bool))
                 {
                     return SQLite3.ColumnInt(stmt, index) == 1;
                 }
-                else if (clrType == typeof(double))
-                {
-                    return SQLite3.ColumnDouble(stmt, index);
-                }
                 else if (clrType == typeof(float))
                 {
                     return (float)SQLite3.ColumnDouble(stmt, index);
+                }
+                else if (clrType == typeof(double))
+                {
+                    return SQLite3.ColumnDouble(stmt, index);
                 }
                 else if (clrType == typeof(TimeSpan))
                 {
@@ -3460,9 +3514,9 @@ namespace SQLite
                 {
                     return SQLite3.ColumnInt64(stmt, index);
                 }
-                else if (clrType == typeof(uint))
+                else if (clrType == typeof(ulong))
                 {
-                    return (uint)SQLite3.ColumnInt64(stmt, index);
+                    return (ulong)SQLite3.ColumnInt64(stmt, index);
                 }
                 else if (clrType == typeof(decimal))
                 {
@@ -3472,17 +3526,17 @@ namespace SQLite
                 {
                     return (byte)SQLite3.ColumnInt(stmt, index);
                 }
-                else if (clrType == typeof(ushort))
+                else if (clrType == typeof(sbyte))
                 {
-                    return (ushort)SQLite3.ColumnInt(stmt, index);
+                    return (sbyte)SQLite3.ColumnInt(stmt, index);
                 }
                 else if (clrType == typeof(short))
                 {
                     return (short)SQLite3.ColumnInt(stmt, index);
                 }
-                else if (clrType == typeof(sbyte))
+                else if (clrType == typeof(ushort))
                 {
-                    return (sbyte)SQLite3.ColumnInt(stmt, index);
+                    return (ushort)SQLite3.ColumnInt(stmt, index);
                 }
                 else if (clrType == typeof(byte[]))
                 {
@@ -3507,6 +3561,12 @@ namespace SQLite
                 {
                     var text = SQLite3.ColumnString(stmt, index);
                     return new UriBuilder(text);
+                }
+                else if (clrType.GetTypeInfo().IsDefined(typeof(DataContractAttribute)))
+                {
+                    var json = SQLite3.ColumnString(stmt, index);
+                    using var stream = new MemoryStream();
+                    return new DataContractJsonSerializer(clrType).ReadObject(stream);
                 }
                 else
                 {
@@ -4290,7 +4350,7 @@ namespace SQLite
                 }
                 else
                 {
-                    sqlCall = call.Method.Name.ToLower() + "(" + string.Join(",", args.Select(a => a.CommandText).ToArray()) + ")";
+                    sqlCall = call.Method.Name.ToUpperInvariant() + "(" + string.Join(",", args.Select(a => a.CommandText).ToArray()) + ")";
                 }
                 return new CompileResult { CommandText = sqlCall };
 
