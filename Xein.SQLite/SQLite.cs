@@ -45,7 +45,7 @@ using Sqlite3Statement = System.IntPtr;
 
 #pragma warning disable IDE0060 // Remove unused parameter
 
-namespace SQLite
+namespace Xein.Database.SQLite
 {
     public class SQLiteException : Exception
     {
@@ -2422,6 +2422,7 @@ namespace SQLite
         }
     }
 
+    #region Attributes
     [AttributeUsage(AttributeTargets.Class)]
     public class TableAttribute : Attribute
     {
@@ -2453,13 +2454,11 @@ namespace SQLite
 
     [AttributeUsage(AttributeTargets.Property)]
     public class PrimaryKeyAttribute : Attribute
-    {
-    }
+    { }
 
     [AttributeUsage(AttributeTargets.Property)]
     public class AutoIncrementAttribute : Attribute
-    {
-    }
+    { }
 
     [AttributeUsage(AttributeTargets.Property)]
     public class IndexedAttribute : Attribute
@@ -2469,8 +2468,7 @@ namespace SQLite
         public virtual bool Unique { get; set; }
 
         public IndexedAttribute()
-        {
-        }
+        { }
 
         public IndexedAttribute(string name, int order)
         {
@@ -2481,8 +2479,7 @@ namespace SQLite
 
     [AttributeUsage(AttributeTargets.Property)]
     public class IgnoreAttribute : Attribute
-    {
-    }
+    { }
 
     [AttributeUsage(AttributeTargets.Property)]
     public class UniqueAttribute : IndexedAttribute
@@ -2529,13 +2526,12 @@ namespace SQLite
 
     [AttributeUsage(AttributeTargets.Property)]
     public class NotNullAttribute : Attribute
-    {
-    }
+    { }
 
     [AttributeUsage(AttributeTargets.Enum)]
     public class StoreAsTextAttribute : Attribute
-    {
-    }
+    { }
+    #endregion
 
     public class TableMapping
     {
@@ -2565,15 +2561,11 @@ namespace SQLite
             CreateFlags = createFlags;
 
             var typeInfo = type.GetTypeInfo();
-#if ENABLE_IL2CPP
-            var tableAttr = typeInfo.GetCustomAttribute<TableAttribute> ();
-#else
             var tableAttr =
                 typeInfo.CustomAttributes
                         .Where(x => x.AttributeType == typeof(TableAttribute))
                         .Select(x => (TableAttribute)Orm.InflateAttribute(x))
                         .FirstOrDefault();
-#endif
 
             TableName = (tableAttr != null && !string.IsNullOrEmpty(tableAttr.Name)) ? tableAttr.Name : MappedType.Name;
             WithoutRowId = tableAttr != null && tableAttr.WithoutRowId;
@@ -2732,21 +2724,16 @@ namespace SQLite
                 var memberType = GetMemberType(member);
 
                 var colAttr = member.CustomAttributes.FirstOrDefault(x => x.AttributeType == typeof(ColumnAttribute));
-#if ENABLE_IL2CPP
-                var ca = member.GetCustomAttribute(typeof(ColumnAttribute)) as ColumnAttribute;
-                Name = ca == null ? member.Name : ca.Name;
-#else
                 Name = (colAttr != null && colAttr.ConstructorArguments.Count > 0) ?
                         colAttr.ConstructorArguments[0].Value?.ToString() :
                         member.Name;
-#endif
                 //If this type is Nullable<T> then Nullable.GetUnderlyingType returns the T, otherwise it returns null, so get the actual type instead
                 ColumnType = Nullable.GetUnderlyingType(memberType) ?? memberType;
                 Collation = Orm.Collation(member);
 
                 IsPK = Orm.IsPK(member) ||
-                    (((createFlags & CreateFlags.ImplicitPK) == CreateFlags.ImplicitPK) &&
-                         string.Compare(member.Name, Orm.ImplicitPkName, StringComparison.OrdinalIgnoreCase) == 0);
+                    (((createFlags & CreateFlags.ImplicitPK) == CreateFlags.ImplicitPK)
+                    && string.Compare(member.Name, Orm.ImplicitPkName, StringComparison.OrdinalIgnoreCase) == 0);
 
                 var isAuto = Orm.IsAutoInc(member) || (IsPK && ((createFlags & CreateFlags.AutoIncPK) == CreateFlags.AutoIncPK));
                 IsAutoGuid = isAuto && ColumnType == typeof(Guid);
@@ -2775,17 +2762,11 @@ namespace SQLite
             {
                 if (_member is PropertyInfo propy)
                 {
-                    if (val != null && ColumnType.GetTypeInfo().IsEnum)
-                        propy.SetValue(obj, Enum.ToObject(ColumnType, val));
-                    else
-                        propy.SetValue(obj, val);
+                    propy.SetValue(obj, val != null && ColumnType.GetTypeInfo().IsEnum ? Enum.ToObject(ColumnType, val) : val);
                 }
                 else if (_member is FieldInfo field)
                 {
-                    if (val != null && ColumnType.GetTypeInfo().IsEnum)
-                        field.SetValue(obj, Enum.ToObject(ColumnType, val));
-                    else
-                        field.SetValue(obj, val);
+                    field.SetValue(obj, val != null && ColumnType.GetTypeInfo().IsEnum ? Enum.ToObject(ColumnType, val) : val);
                 }
                 else
                     throw new InvalidProgramException("unreachable condition");
@@ -2915,11 +2896,11 @@ namespace SQLite
         public static string SqlType(TableMapping.Column p, bool storeDateTimeAsTicks, bool storeTimeSpanAsTicks)
         {
             var clrType = p.ColumnType;
-            if (clrType == typeof(bool) || 
-                clrType == typeof(byte) || clrType == typeof(sbyte) ||
+            if (clrType == typeof(bool)   || 
+                clrType == typeof(byte)   || clrType == typeof(sbyte) ||
                 clrType == typeof(ushort) || clrType == typeof(short) || 
-                clrType == typeof(int) || clrType == typeof(uint) || 
-                clrType == typeof(long) || clrType == typeof(ulong))
+                clrType == typeof(int)    || clrType == typeof(uint)  || 
+                clrType == typeof(long)   || clrType == typeof(ulong))
             {
                 return "INTERGER";
             }
@@ -2968,23 +2949,12 @@ namespace SQLite
 
         public static bool IsPK(MemberInfo p)
         {
-            return p.CustomAttributes.Any(x => x.AttributeType == typeof(PrimaryKeyAttribute));
+            return p.GetCustomAttribute<PrimaryKeyAttribute>() != null;
         }
 
         public static string Collation(MemberInfo p)
         {
-#if ENABLE_IL2CPP
-            return (p.GetCustomAttribute<CollationAttribute> ()?.Value) ?? "";
-#else
-            return
-                (p.CustomAttributes
-                 .Where(x => typeof(CollationAttribute) == x.AttributeType)
-                 .Select(x => {
-                     var args = x.ConstructorArguments;
-                     return args.Count > 0 ? ((args[0].Value as string) ?? "") : "";
-                 })
-                 .FirstOrDefault()) ?? "";
-#endif
+            return p.GetCustomAttribute<CollationAttribute>()?.Value ?? "";
         }
 
         public static bool CanBeAutoIncPK(TableMapping.Column column)
@@ -2994,28 +2964,23 @@ namespace SQLite
 
         public static bool IsAutoInc(MemberInfo p)
         {
-            return p.CustomAttributes.Any(x => x.AttributeType == typeof(AutoIncrementAttribute));
+            return p.GetCustomAttribute<AutoIncrementAttribute>() != null;
         }
 
         public static FieldInfo GetField(TypeInfo t, string name)
         {
-            var f = t.GetDeclaredField(name);
-            return f ?? GetField(t.BaseType.GetTypeInfo(), name);
+            return t.GetDeclaredField(name) ?? GetField(t.BaseType.GetTypeInfo(), name);
         }
 
         public static PropertyInfo GetProperty(TypeInfo t, string name)
         {
-            var f = t.GetDeclaredProperty(name);
-            return f ?? GetProperty(t.BaseType.GetTypeInfo(), name);
+            return t.GetDeclaredProperty(name) ?? GetProperty(t.BaseType.GetTypeInfo(), name);
         }
 
         public static object InflateAttribute(CustomAttributeData x)
         {
             var atype = x.AttributeType;
             var typeInfo = atype.GetTypeInfo();
-#if ENABLE_IL2CPP
-            var r = Activator.CreateInstance(x.AttributeType);
-#else
             var args = x.ConstructorArguments.Select(a => a.Value).ToArray();
             var r = Activator.CreateInstance(x.AttributeType, args);
             foreach (var arg in x.NamedArguments)
@@ -3025,43 +2990,24 @@ namespace SQLite
                 else
                     GetProperty(typeInfo, arg.MemberName).SetValue(r, arg.TypedValue.Value);
             }
-#endif
             return r;
         }
 
         public static IEnumerable<IndexedAttribute> GetIndices(MemberInfo p)
         {
-#if ENABLE_IL2CPP
-            return p.GetCustomAttributes<IndexedAttribute> ();
-#else
-            var indexedInfo = typeof(IndexedAttribute).GetTypeInfo();
-            return
-                p.CustomAttributes
-                 .Where(x => indexedInfo.IsAssignableFrom(x.AttributeType.GetTypeInfo()))
-                 .Select(x => (IndexedAttribute)InflateAttribute(x));
-#endif
+            return p.GetCustomAttributes<IndexedAttribute>();
         }
 
         public static int? MaxStringLength(MemberInfo p)
         {
-#if ENABLE_IL2CPP
-            return p.GetCustomAttribute<MaxLengthAttribute> ()?.Value;
-#else
-            var attr = p.CustomAttributes.FirstOrDefault(x => x.AttributeType == typeof(MaxLengthAttribute));
-            if (attr != null)
-            {
-                var attrv = (MaxLengthAttribute)InflateAttribute(attr);
-                return attrv.Value;
-            }
-            return null;
-#endif
+            return p.GetCustomAttribute<MaxLengthAttribute>()?.Value;
         }
 
         public static int? MaxStringLength(PropertyInfo p) => MaxStringLength((MemberInfo)p);
 
         public static bool IsMarkedNotNull(MemberInfo p)
         {
-            return p.CustomAttributes.Any(x => x.AttributeType == typeof(NotNullAttribute));
+            return p.GetCustomAttribute<NotNullAttribute>() != null;
         }
     }
 
@@ -3089,13 +3035,11 @@ namespace SQLite
             Finalize(stmt);
             if (r == SQLite3.Result.Done)
             {
-                int rowsAffected = SQLite3.Changes(_conn.Handle);
-                return rowsAffected;
+                return SQLite3.Changes(_conn.Handle);
             }
             else if (r == SQLite3.Result.Error)
             {
-                string msg = SQLite3.GetErrmsg(_conn.Handle);
-                throw SQLiteException.New(r, msg);
+                throw SQLiteException.New(r, SQLite3.GetErrmsg(_conn.Handle));
             }
             else if (r == SQLite3.Result.Constraint)
             {
@@ -3139,9 +3083,7 @@ namespace SQLite
         public IEnumerable<T> ExecuteDeferredQuery<T>(TableMapping map)
         {
             if (_conn.Trace)
-            {
                 _conn.Tracer?.Invoke("Executing Query: " + this);
-            }
 
             var stmt = Prepare();
             try
@@ -3220,9 +3162,7 @@ namespace SQLite
                     var colType = SQLite3.ColumnType(stmt, 0);
                     var colval = ReadCol(stmt, 0, colType, typeof(T));
                     if (colval != null)
-                    {
                         val = (T)colval;
-                    }
                 }
                 else if (r == SQLite3.Result.Done)
                 { }
@@ -3770,9 +3710,7 @@ namespace SQLite
             bool isNullable = false;
 
             if (clrTypeInfo.IsGenericType && clrTypeInfo.GetGenericTypeDefinition() == typeof(Nullable<>))
-            {
                 isNullable = true;
-            }
 
             if (isNullable)
             {
@@ -3818,10 +3756,9 @@ namespace SQLite
     class PreparedSqlLiteInsertCommand : IDisposable
     {
         bool Initialized;
+        string CommandText;
 
         SQLiteConnection Connection;
-
-        string CommandText;
 
         Sqlite3Statement Statement;
         static readonly Sqlite3Statement NullStatement = default;
@@ -3835,16 +3772,10 @@ namespace SQLite
         public int ExecuteNonQuery(object[] source)
         {
             if (Initialized && Statement == NullStatement)
-            {
                 throw new ObjectDisposedException(nameof(PreparedSqlLiteInsertCommand));
-            }
 
             if (Connection.Trace)
-            {
                 Connection.Tracer?.Invoke("Executing: " + CommandText);
-            }
-
-            var r = SQLite3.Result.OK;
 
             if (!Initialized)
             {
@@ -3852,16 +3783,14 @@ namespace SQLite
                 Initialized = true;
             }
 
-            //bind the values.
+            // bind the values.
             if (source != null)
             {
                 for (int i = 0; i < source.Length; i++)
-                {
                     SQLiteCommand.BindParameter(Statement, i + 1, source[i], Connection.StoreDateTimeAsTicks, Connection.DateTimeStringFormat, Connection.StoreTimeSpanAsTicks);
-                }
             }
-            r = SQLite3.Step(Statement);
 
+            var r = SQLite3.Step(Statement);
             if (r == SQLite3.Result.Done)
             {
                 int rowsAffected = SQLite3.Changes(Connection.Handle);
@@ -4025,21 +3954,16 @@ namespace SQLite
 
             var pred = _where;
 
-            if (predExpr != null && predExpr.NodeType == ExpressionType.Lambda)
-            {
-                var lambda = (LambdaExpression)predExpr;
+            if (predExpr != null && predExpr is LambdaExpression lambda)
                 pred = pred != null ? Expression.AndAlso(pred, lambda.Body) : lambda.Body;
-            }
 
             var args = new List<object>();
-            var cmdText = "DELETE FROM \"" + Table.TableName + "\"";
+            var cmdText = $"DELETE FROM \"{Table.TableName}\"";
             var w = CompileExpr(pred, args);
-            cmdText += " where " + w.CommandText;
+            cmdText += $" WHERE {w.CommandText}";
 
             var command = Connection.CreateCommand(cmdText, args.ToArray());
-
-            int result = command.ExecuteNonQuery();
-            return result;
+            return command.ExecuteNonQuery();
         }
 
         /// <summary>
@@ -4183,29 +4107,20 @@ namespace SQLite
             }
             else
             {
-                var cmdText = "select " + selectionList + " from \"" + Table.TableName + "\"";
+                var cmdText = $"SELECT {selectionList} FROM \"{Table.TableName}\"";
                 var args = new List<object>();
+
                 if (_where != null)
-                {
-                    var w = CompileExpr(_where, args);
-                    cmdText += " where " + w.CommandText;
-                }
+                    cmdText += $" WHERE {CompileExpr(_where, args).CommandText}";
                 if ((_orderBys != null) && (_orderBys.Count > 0))
-                {
-                    var t = string.Join(", ", _orderBys.Select(o => "\"" + o.ColumnName + "\"" + (o.Ascending ? "" : " desc")).ToArray());
-                    cmdText += " order by " + t;
-                }
+                    cmdText += $" ORDER BY {string.Join(", ", _orderBys.Select(o => "\"" + o.ColumnName + "\"" + (o.Ascending ? "" : " DESC")).ToArray())}";
                 if (_limit.HasValue)
-                {
-                    cmdText += " limit " + _limit.Value;
-                }
+                    cmdText += $" LIMIT {_limit.Value}";
                 if (_offset.HasValue)
                 {
                     if (!_limit.HasValue)
-                    {
-                        cmdText += " limit -1 ";
-                    }
-                    cmdText += " offset " + _offset.Value;
+                        cmdText += " LIMIT -1 ";
+                    cmdText += $" OFFSET {_offset.Value}";
                 }
                 return Connection.CreateCommand(cmdText, args.ToArray());
             }
@@ -4214,7 +4129,6 @@ namespace SQLite
         class CompileResult
         {
             public string CommandText { get; set; }
-
             public object Value { get; set; }
         }
 
@@ -4472,9 +4386,9 @@ namespace SQLite
         private string CompileNullBinaryExpression(BinaryExpression expression, CompileResult parameter)
         {
             if (expression.NodeType == ExpressionType.Equal)
-                return "(" + parameter.CommandText + " is ?)";
+                return "(" + parameter.CommandText + " IS ?)";
             else if (expression.NodeType == ExpressionType.NotEqual)
-                return "(" + parameter.CommandText + " is not ?)";
+                return "(" + parameter.CommandText + " IS NOT ?)";
             else if (expression.NodeType == ExpressionType.GreaterThan
                 || expression.NodeType == ExpressionType.GreaterThanOrEqual
                 || expression.NodeType == ExpressionType.LessThan
