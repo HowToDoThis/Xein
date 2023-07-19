@@ -2902,7 +2902,7 @@ namespace Xein.Database.SQLite
                 clrType == typeof(int)    || clrType == typeof(uint)  || 
                 clrType == typeof(long)   || clrType == typeof(ulong))
             {
-                return "INTERGER";
+                return "INTEGER";
             }
             else if (clrType == typeof(float) || clrType == typeof(double) || clrType == typeof(decimal))
             {
@@ -2927,7 +2927,7 @@ namespace Xein.Database.SQLite
             }
             else if (clrType.GetTypeInfo().IsEnum)
             {
-                return p.StoreAsText ? "VARCHAR" : "INTERGER";
+                return p.StoreAsText ? "VARCHAR" : "INTEGER";
             }
             else if (clrType == typeof(byte[]))
             {
