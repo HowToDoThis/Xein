@@ -2676,7 +2676,7 @@ namespace Xein.Database.SQLite
             if (!string.IsNullOrEmpty(p.Collation))
                 decl += $"COLLATE {p.Collation} ";
             if (p.IsDefaultValueExists)
-                decl += $"DEFAULT VALUE '{p.DefaultValue}'";
+                decl += $"DEFAULT '{p.DefaultValue}'";
             return decl;
         }
 
