@@ -2349,6 +2349,17 @@ namespace Xein.Database.SQLite
     [AttributeUsage(AttributeTargets.Enum)]
     public class StoreAsTextAttribute : Attribute
     { }
+
+    [AttributeUsage(AttributeTargets.Property)]
+    public class DBDefaultValueAttribute : Attribute
+    {
+        public object Value { get; set; }
+
+        public DBDefaultValueAttribute(object value)
+        {
+            Value = value;
+        }
+    }
     #endregion
 
     public class TableMapping
@@ -2523,6 +2534,9 @@ namespace Xein.Database.SQLite
 
             public bool StoreAsText { get; private set; }
 
+            public bool IsDefaultValueExists { get; private set; }
+            public string DefaultValue { get; private set; }
+
             public Column(MemberInfo member, CreateFlags createFlags = CreateFlags.None)
             {
                 _member = member;
@@ -2555,6 +2569,8 @@ namespace Xein.Database.SQLite
 
                 StoreAsText = memberType.GetTypeInfo().CustomAttributes.Any(x => x.AttributeType == typeof(StoreAsTextAttribute));
                 IsAutoInc = isAuto && !IsAutoGuid && Orm.CanBeAutoIncPK(this);
+
+                (IsDefaultValueExists, DefaultValue) = Orm.IsDefaultValue(member);
             }
 
             public Column(PropertyInfo member, CreateFlags createFlags = CreateFlags.None)
@@ -2658,7 +2674,9 @@ namespace Xein.Database.SQLite
             if (!p.IsNullable)
                 decl += "NOT NULL ";
             if (!string.IsNullOrEmpty(p.Collation))
-                decl += "COLLATE " + p.Collation + " ";
+                decl += $"COLLATE {p.Collation} ";
+            if (p.IsDefaultValueExists)
+                decl += $"DEFAULT VALUE '{p.DefaultValue}'";
             return decl;
         }
 
@@ -2712,8 +2730,14 @@ namespace Xein.Database.SQLite
             }
             else
             {
-                throw new NotSupportedException("Don't know about " + clrType);
+                throw new NotSupportedException($"Don't know about {clrType}");
             }
+        }
+
+        public static (bool exists, string value) IsDefaultValue(MemberInfo p)
+        {
+            var attr = p.GetCustomAttribute<DBDefaultValueAttribute>();
+            return attr is null ? (false, string.Empty) : (true, $"{attr.Value}");
         }
 
         public static bool IsPK(MemberInfo p) => p.GetCustomAttribute<PrimaryKeyAttribute>() != null;
