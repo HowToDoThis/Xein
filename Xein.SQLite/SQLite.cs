@@ -838,21 +838,16 @@ namespace Xein.Database.SQLite
 
         void MigrateTable(TableMapping map, List<ColumnInfo> existingCols)
         {
-            var toBeAdded = new List<TableMapping.Column>();
-
             foreach (var p in map.Columns)
             {
-                var found = existingCols
-                    .Select(c => string.Compare(p.Name, c.Name, StringComparison.OrdinalIgnoreCase) == 0)
-                    .Any(f => f is true);
-                if (!found)
-                    toBeAdded.Add(p);
+                if (!existingCols.Any(c => string.Compare(p.Name, c.Name, StringComparison.OrdinalIgnoreCase) == 0))
+                    Execute($"ALTER TABLE \"{map.TableName}\" ADD COLUMN {Orm.SqlDecl(p, StoreDateTimeAsTicks, StoreTimeSpanAsTicks)}");
             }
 
-            foreach (var p in toBeAdded)
+            foreach (var p in existingCols)
             {
-                var addCol = $"ALTER TABLE \"{map.TableName}\" ADD COLUMN {Orm.SqlDecl(p, StoreDateTimeAsTicks, StoreTimeSpanAsTicks)}";
-                Execute(addCol);
+                if (!map.Columns.Any(c => string.Compare(p.Name, c.Name, StringComparison.OrdinalIgnoreCase) == 0))
+                    Execute($"ALTER TABLE \"{map.TableName}\" DROP COLUMN '{p}'");
             }
         }
 
