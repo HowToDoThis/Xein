@@ -847,7 +847,11 @@ namespace Xein.Database.SQLite
             foreach (var p in existingCols)
             {
                 if (!map.Columns.Any(c => string.Compare(p.Name, c.Name, StringComparison.OrdinalIgnoreCase) == 0))
+                {
+                    // Index keys
+                    Execute($"DROP INDEX IF EXISTS '{map.TableName}_{p}'");
                     Execute($"ALTER TABLE \"{map.TableName}\" DROP COLUMN '{p}'");
+                }
             }
         }
 
