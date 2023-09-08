@@ -30,6 +30,7 @@ using Sqlite3DatabaseHandle = SQLitePCL.sqlite3;
 using Sqlite3BackupHandle = SQLitePCL.sqlite3_backup;
 using Sqlite3Statement = SQLitePCL.sqlite3_stmt;
 using Sqlite3 = SQLitePCL.raw;
+// ReSharper disable All
 #else
 using System.Runtime.InteropServices;
 
@@ -224,6 +225,7 @@ namespace Xein.Database.SQLite
         List<T> Query<T>(string query, params object[] args) where T : new();
         List<object> Query(TableMapping map, string query, params object[] args);
         List<T> QueryScalars<T>(string query, params object[] args);
+        List<List<KeyValuePair<string, object>>> SelectDynamic(string query, params object[] args);
         void Release(string savepoint);
         void Rollback();
         void RollbackTo(string savepoint);
@@ -240,20 +242,20 @@ namespace Xein.Database.SQLite
     /// </summary>
     [Preserve(AllMembers = true)]
     public partial class SQLiteConnection
-        : IDisposable , ISQLiteConnection
+        : IDisposable, ISQLiteConnection
     {
-        private bool _open;
-        private TimeSpan _busyTimeout;
-        readonly static Dictionary<string, TableMapping> _mappings = new Dictionary<string, TableMapping>();
+        private bool      _open;
+        private TimeSpan  _busyTimeout;
         private Stopwatch _sw;
-        private long _elapsedMilliseconds = 0;
+        private long      _elapsedMilliseconds = 0;
+        private int       _transactionDepth = 0;
 
-        private int _transactionDepth = 0;
-        private Random _rand = new Random();
+        private readonly Random _rand = new Random();
+        readonly static Dictionary<string, TableMapping> _mappings = new Dictionary<string, TableMapping>();
 
-        public Sqlite3DatabaseHandle Handle { get; private set; }
-        static readonly Sqlite3DatabaseHandle NullHandle = default;
-        static readonly Sqlite3BackupHandle NullBackupHandle = default;
+        public          Sqlite3DatabaseHandle Handle           { get; private set; }
+        static readonly Sqlite3DatabaseHandle NullHandle       = default;
+        static readonly Sqlite3BackupHandle   NullBackupHandle = default;
 
         /// <summary>
         /// Gets the database path used by this connection.
@@ -417,7 +419,7 @@ namespace Xein.Database.SQLite
             if (unsafeString == null)
                 return "NULL";
             var safe = unsafeString.Replace("'", "''");
-            return "'" + safe + "'";
+            return $"'{safe}'";
         }
 
         /// <summary>
@@ -432,7 +434,7 @@ namespace Xein.Database.SQLite
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
             var q = Quote(key);
-            ExecuteScalar<string>("PRAGMA key = " + q);
+            ExecuteScalar<string>($"PRAGMA key = {q}");
         }
 
         /// <summary>
@@ -449,7 +451,7 @@ namespace Xein.Database.SQLite
             if (key.Length != 32 && key.Length != 48)
                 throw new ArgumentException("Key must be 32 bytes (256-bit) or 48 bytes (384-bit)", nameof(key));
             var s = string.Join("", key.Select(x => x.ToString("X2")));
-            ExecuteScalar<string>("PRAGMA key = \"x'" + s + "'\"");
+            ExecuteScalar<string>($"PRAGMA key = \"x'{s}'\"");
         }
 
         /// <summary>
@@ -606,7 +608,7 @@ namespace Xein.Database.SQLite
 
             // Present a nice error if no columns specified
             if (map.Columns.Length == 0)
-                throw new Exception(string.Format("Cannot create a table without columns (does '{0}' have public properties?)", ty.FullName));
+                throw new Exception($"Cannot create a table without columns (does '{ty.FullName}' have public properties?)");
 
             // Check if the table exists
             var result = CreateTableResult.Created;
@@ -750,7 +752,7 @@ namespace Xein.Database.SQLite
         public CreateTablesResult CreateTables(CreateFlags createFlags = CreateFlags.None, params Type[] types)
         {
             var result = new CreateTablesResult();
-            foreach (Type type in types)
+            foreach (var type in types)
                 result.Results[type] = CreateTable(type, createFlags);
             return result;
         }
@@ -763,7 +765,8 @@ namespace Xein.Database.SQLite
         /// <param name="columnNames">An array of column names to index</param>
         /// <param name="unique">Whether the index should be unique</param>
         /// <returns>Zero on success.</returns>
-        public int CreateIndex(string indexName, string tableName, string[] columnNames, bool unique = false) => Execute($"CREATE {(unique ? "UNIQUE" : string.Empty)} INDEX IF NOT EXISTS \"{indexName}\" ON \"{tableName}\"(\"{string.Join("\", \"", columnNames)}\")");
+        public int CreateIndex(string indexName, string tableName, string[] columnNames, bool unique = false)
+            => Execute($"CREATE {(unique ? "UNIQUE" : string.Empty)} INDEX IF NOT EXISTS \"{indexName}\" ON \"{tableName}\"(\"{string.Join("\", \"", columnNames)}\")");
 
         /// <summary>
         /// Creates an index for the specified table and column.
@@ -773,7 +776,8 @@ namespace Xein.Database.SQLite
         /// <param name="columnName">Name of the column to index</param>
         /// <param name="unique">Whether the index should be unique</param>
         /// <returns>Zero on success.</returns>
-        public int CreateIndex(string indexName, string tableName, string columnName, bool unique = false) => CreateIndex(indexName, tableName, new string[] { columnName }, unique);
+        public int CreateIndex(string indexName, string tableName, string columnName, bool unique = false)
+            => CreateIndex(indexName, tableName, new string[] { columnName }, unique);
 
         /// <summary>
         /// Creates an index for the specified table and column.
@@ -782,7 +786,8 @@ namespace Xein.Database.SQLite
         /// <param name="columnName">Name of the column to index</param>
         /// <param name="unique">Whether the index should be unique</param>
         /// <returns>Zero on success.</returns>
-        public int CreateIndex(string tableName, string columnName, bool unique = false) => CreateIndex($"{tableName}_{columnName}", tableName, columnName, unique);
+        public int CreateIndex(string tableName, string columnName, bool unique = false)
+            => CreateIndex($"{tableName}_{columnName}", tableName, columnName, unique);
 
         /// <summary>
         /// Creates an index for the specified table and columns.
@@ -791,7 +796,8 @@ namespace Xein.Database.SQLite
         /// <param name="columnNames">An array of column names to index</param>
         /// <param name="unique">Whether the index should be unique</param>
         /// <returns>Zero on success.</returns>
-        public int CreateIndex(string tableName, string[] columnNames, bool unique = false) => CreateIndex($"{tableName}_{string.Join("_", columnNames)}", tableName, columnNames, unique);
+        public int CreateIndex(string tableName, string[] columnNames, bool unique = false)
+            => CreateIndex($"{tableName}_{string.Join("_", columnNames)}", tableName, columnNames, unique);
 
         /// <summary>
         /// Creates an index for the specified object property.
@@ -803,7 +809,7 @@ namespace Xein.Database.SQLite
         /// <returns>Zero on success.</returns>
         public int CreateIndex<T>(Expression<Func<T, object>> property, bool unique = false)
         {
-            MemberExpression mx = property.Body.NodeType == ExpressionType.Convert
+            var mx = property.Body.NodeType == ExpressionType.Convert
                 ? ((UnaryExpression)property.Body).Operand as MemberExpression
                 : (property.Body as MemberExpression);
 
@@ -840,13 +846,13 @@ namespace Xein.Database.SQLite
         {
             foreach (var p in map.Columns)
             {
-                if (!existingCols.Any(c => string.Compare(p.Name, c.Name, StringComparison.OrdinalIgnoreCase) == 0))
+                if (existingCols.All(c => string.Compare(p.Name, c.Name, StringComparison.OrdinalIgnoreCase) != 0))
                     Execute($"ALTER TABLE \"{map.TableName}\" ADD COLUMN {Orm.SqlDecl(p, StoreDateTimeAsTicks, StoreTimeSpanAsTicks)}");
             }
 
             foreach (var p in existingCols)
             {
-                if (!map.Columns.Any(c => string.Compare(p.Name, c.Name, StringComparison.OrdinalIgnoreCase) == 0))
+                if (map.Columns.All(c => string.Compare(p.Name, c.Name, StringComparison.OrdinalIgnoreCase) != 0))
                 {
                     // Index keys
                     Execute($"DROP INDEX IF EXISTS '{map.TableName}_{p}'");
@@ -1030,6 +1036,12 @@ namespace Xein.Database.SQLite
         {
             var cmd = CreateCommand(query, args);
             return cmd.ExecuteQueryScalars<T>().ToList();
+        }
+        
+        public List<List<KeyValuePair<string, object>>> SelectDynamic(string query, params object[] args)
+        {
+            var cmd = CreateCommand(query, args);
+            return cmd.SelectDynamic().ToList();
         }
 
         /// <summary>
@@ -1447,7 +1459,7 @@ namespace Xein.Database.SQLite
 #else
                         Thread.VolatileWrite(ref _transactionDepth, depth);
 #endif
-                        Execute(cmd + savepoint);
+                        Execute($"{cmd}{savepoint}");
                         return;
                     }
                 }
@@ -1461,29 +1473,27 @@ namespace Xein.Database.SQLite
         /// </summary>
         public void Commit()
         {
-            if (Interlocked.Exchange(ref _transactionDepth, 0) != 0)
+            // Do nothing on a commit with no open transaction
+            if (Interlocked.Exchange(ref _transactionDepth, 0) == 0) return;
+            try
             {
+                Execute("COMMIT");
+            }
+            catch
+            {
+                // Force a rollback since most people don't know this function can fail
+                // Don't call Rollback() since the _transactionDepth is 0 and it won't try
+                // Calling rollback makes our _transactionDepth variable correct.
                 try
                 {
-                    Execute("COMMIT");
+                    Execute("ROLLBACK");
                 }
                 catch
                 {
-                    // Force a rollback since most people don't know this function can fail
-                    // Don't call Rollback() since the _transactionDepth is 0 and it won't try
-                    // Calling rollback makes our _transactionDepth variable correct.
-                    try
-                    {
-                        Execute("ROLLBACK");
-                    }
-                    catch
-                    {
-                        // rollback can fail in all sorts of wonderful version-dependent ways. Let's just hope for the best
-                    }
-                    throw;
+                    // rollback can fail in all sorts of wonderful version-dependent ways. Let's just hope for the best
                 }
+                throw;
             }
-            // Do nothing on a commit with no open transaction
         }
 
         /// <summary>
@@ -1528,14 +1538,12 @@ namespace Xein.Database.SQLite
             if (runInTransaction)
             {
                 RunInTransaction(() => {
-                    foreach (var r in objects)
-                        c += Insert(r);
+                    c += objects.Cast<object?>().Sum(Insert);
                 });
             }
             else
             {
-                foreach (var r in objects)
-                    c += Insert(r);
+                c += objects.Cast<object?>().Sum(Insert);
             }
             return c;
         }
@@ -1561,14 +1569,12 @@ namespace Xein.Database.SQLite
             if (runInTransaction)
             {
                 RunInTransaction(() => {
-                    foreach (var r in objects)
-                        c += Insert(r, extra);
+                    c += objects.Cast<object?>().Sum(r => Insert(r, extra));
                 });
             }
             else
             {
-                foreach (var r in objects)
-                    c += Insert(r, extra);
+                c += objects.Cast<object?>().Sum(r => Insert(r, extra));
             }
             return c;
         }
@@ -1594,14 +1600,12 @@ namespace Xein.Database.SQLite
             if (runInTransaction)
             {
                 RunInTransaction(() => {
-                    foreach (var r in objects)
-                        c += Insert(r, objType);
+                    c += objects.Cast<object?>().Sum(r => Insert(r, objType));
                 });
             }
             else
             {
-                foreach (var r in objects)
-                    c += Insert(r, objType);
+                c += objects.Cast<object?>().Sum(r => Insert(r, objType));
             }
             return c;
         }
@@ -1709,11 +1713,8 @@ namespace Xein.Database.SQLite
                 return 0;
 
             var map = GetMapping(objType);
-            if (map.PK != null && map.PK.IsAutoGuid)
-            {
-                if (map.PK.GetValue(obj).Equals(Guid.Empty))
-                    map.PK.SetValue(obj, Guid.NewGuid());
-            }
+            if (map.PK != null && map.PK.IsAutoGuid && map.PK.GetValue(obj).Equals(Guid.Empty))
+                map.PK.SetValue(obj, Guid.NewGuid());
 
             var replacing = string.Compare(extra, "OR REPLACE", StringComparison.OrdinalIgnoreCase) == 0;
 
@@ -1787,6 +1788,7 @@ namespace Xein.Database.SQLite
         {
             var cols = map.InsertColumns;
             string insertSql;
+            
             if (cols.Length == 0 && map.Columns.Length == 1 && map.Columns[0].IsAutoInc)
             {
                 insertSql = $"INSERT {map.TableName} INTO \"{extra}\" DEFAULT VALUES";
@@ -1797,12 +1799,9 @@ namespace Xein.Database.SQLite
                 if (replacing)
                     cols = map.InsertOrReplaceColumns;
 
-                insertSql = string.Format("INSERT {3} INTO \"{0}\"({1}) VALUES ({2})", map.TableName,
-                                   string.Join(",", (from c in cols
-                                                     select $"\"{c.Name}\"").ToArray()),
-                                   string.Join(",", (from c in cols
-                                                     select "?").ToArray()), extra);
-
+                insertSql =
+                    $"INSERT {extra} INTO \"{map.TableName}\"({string.Join(",", (from c in cols select $"\"{c.Name}\"").ToArray())}) " +
+                    $"VALUES ({string.Join(",", (from c in cols select "?").ToArray())})";
             }
 
             return new PreparedSqlLiteInsertCommand(this, insertSql);
@@ -1838,12 +1837,11 @@ namespace Xein.Database.SQLite
         public int Update(object obj, Type objType)
         {
             int rowsAffected = 0;
-            if (obj == null || objType == null)
-                return 0;
+            if (obj == null || objType == null) return 0;
 
             var map = GetMapping(objType);
 
-            var pk = map.PK ?? throw new NotSupportedException("Cannot update " + map.TableName + ": it has no PK");
+            var pk = map.PK ?? throw new NotSupportedException($"Cannot update {map.TableName}: it has no PK");
             var cols = from p in map.Columns
                        where p != pk
                        select p;
@@ -1898,14 +1896,12 @@ namespace Xein.Database.SQLite
             if (runInTransaction)
             {
                 RunInTransaction(() => {
-                    foreach (var r in objects)
-                        c += Update(r);
+                    c += objects.Cast<object?>().Sum(Update);
                 });
             }
             else
             {
-                foreach (var r in objects)
-                    c += Update(r);
+                c += objects.Cast<object?>().Sum(Update);
             }
             return c;
         }
@@ -1922,9 +1918,8 @@ namespace Xein.Database.SQLite
         public int Delete(object objectToDelete)
         {
             var map = GetMapping(Orm.GetType(objectToDelete));
-            var pk = map.PK ?? throw new NotSupportedException("Cannot delete " + map.TableName + ": it has no PK");
-            var q = $"DELETE FROM \"{map.TableName}\" WHERE \"{pk.Name}\" = ?";
-            var count = Execute(q, pk.GetValue(objectToDelete));
+            var pk = map.PK ?? throw new NotSupportedException($"Cannot delete {map.TableName}: it has no PK");
+            var count = Execute($"DELETE FROM \"{map.TableName}\" WHERE \"{pk.Name}\" = ?", pk.GetValue(objectToDelete));
             if (count > 0)
                 OnTableChanged(map, NotifyTableChangedAction.Delete);
             return count;
@@ -1959,8 +1954,7 @@ namespace Xein.Database.SQLite
         public int Delete(object primaryKey, TableMapping map)
         {
             var pk = map.PK ?? throw new NotSupportedException("Cannot delete " + map.TableName + ": it has no PK");
-            var q = $"DELETE FROM \"{map.TableName}\" WHERE \"{pk.Name}\" = ?";
-            var count = Execute(q, primaryKey);
+            var count = Execute($"DELETE FROM \"{map.TableName}\" WHERE \"{pk.Name}\" = ?", primaryKey);
             if (count > 0)
                 OnTableChanged(map, NotifyTableChangedAction.Delete);
             return count;
@@ -1996,8 +1990,7 @@ namespace Xein.Database.SQLite
         /// </returns>
         public int DeleteAll(TableMapping map)
         {
-            var query = $"DELETE FROM \"{map.TableName}\"";
-            var count = Execute(query);
+            var count = Execute($"DELETE FROM \"{map.TableName}\"");
             if (count > 0)
                 OnTableChanged(map, NotifyTableChangedAction.Delete);
             return count;
@@ -2012,8 +2005,7 @@ namespace Xein.Database.SQLite
         {
             // Open the destination
             var r = SQLite3.Open(destinationDatabasePath, out var destHandle);
-            if (r != SQLite3.Result.OK)
-                throw SQLiteException.New(r, "Failed to open destination database");
+            if (r != SQLite3.Result.OK) throw SQLiteException.New(r, "Failed to open destination database");
 
             // Init the backup
             var backup = SQLite3.BackupInit(destHandle, databaseName, Handle, databaseName);
@@ -2030,13 +2022,11 @@ namespace Xein.Database.SQLite
             // Check for errors
             r = SQLite3.GetResult(destHandle);
             string msg = string.Empty;
-            if (r != SQLite3.Result.OK)
-                msg = SQLite3.GetErrmsg(destHandle);
+            if (r != SQLite3.Result.OK) msg = SQLite3.GetErrmsg(destHandle);
 
             // Close everything and report errors
             SQLite3.Close(destHandle);
-            if (r != SQLite3.Result.OK)
-                throw SQLiteException.New(r, msg);
+            if (r != SQLite3.Result.OK) throw SQLiteException.New(r, msg);
         }
 
         ~SQLiteConnection()
@@ -2057,17 +2047,13 @@ namespace Xein.Database.SQLite
             var useClose2 = LibVersionNumber >= 3007014;
 
             if (_open && Handle != NullHandle)
-            {
                 try
                 {
                     if (disposing)
                     {
                         lock (_insertCommandMap)
                         {
-                            foreach (var sqlInsertCommand in _insertCommandMap.Values)
-                            {
-                                sqlInsertCommand.Dispose();
-                            }
+                            foreach (var sqlInsertCommand in _insertCommandMap.Values) sqlInsertCommand.Dispose();
                             _insertCommandMap.Clear();
                         }
 
@@ -2079,16 +2065,13 @@ namespace Xein.Database.SQLite
                         }
                     }
                     else
-                    {
                         _ = useClose2 ? SQLite3.Close2(Handle) : SQLite3.Close(Handle);
-                    }
                 }
                 finally
                 {
                     Handle = NullHandle;
                     _open = false;
                 }
-            }
         }
 
         void OnTableChanged(TableMapping table, NotifyTableChangedAction action) => TableChanged?.Invoke(this, new NotifyTableChangedEventArgs(table, action));
@@ -2222,8 +2205,7 @@ namespace Xein.Database.SQLite
         /// </param>
         public SQLiteConnectionString(string databasePath, SQLiteOpenFlags openFlags, bool storeDateTimeAsTicks, object key = null, Action<SQLiteConnection> preKeyAction = null, Action<SQLiteConnection> postKeyAction = null, string vfsName = null, string dateTimeStringFormat = DateTimeSqliteDefaultFormat, bool storeTimeSpanAsTicks = true)
         {
-            if (key != null && !((key is byte[]) || (key is string)))
-                throw new ArgumentException("Encryption keys must be strings or byte arrays", nameof(key));
+            if (key != null && !((key is byte[]) || (key is string))) throw new ArgumentException("Encryption keys must be strings or byte arrays", nameof(key));
 
             UniqueKey = $"{databasePath}_{(uint)openFlags:X8}";
             StoreDateTimeAsTicks = storeDateTimeAsTicks;
@@ -2791,7 +2773,7 @@ namespace Xein.Database.SQLite
 
         public int ExecuteNonQuery()
         {
-            _conn.Tracer?.Invoke("Executing: " + this);
+            _conn.Tracer?.Invoke($"Executing: {this}");
 
             var stmt = Prepare();
             var r = SQLite3.Step(stmt);
@@ -2828,7 +2810,7 @@ namespace Xein.Database.SQLite
 
         public IEnumerable<T> ExecuteDeferredQuery<T>(TableMapping map)
         {
-            _conn.Tracer?.Invoke("Executing Query: " + this);
+            _conn.Tracer?.Invoke($"Executing Query: {this}");
 
             var stmt = Prepare();
             try
@@ -2842,7 +2824,7 @@ namespace Xein.Database.SQLite
                 }
                 else if (map.Method == TableMapping.MapMethod.ByName)
                 {
-                    MethodInfo getSetter = null;
+                    MethodInfo? getSetter = null;
                     if (typeof(T) != map.MappedType)
                     {
                         getSetter = typeof(FastColumnSetter)
@@ -2850,7 +2832,7 @@ namespace Xein.Database.SQLite
                                 BindingFlags.NonPublic | BindingFlags.Static).MakeGenericMethod(map.MappedType);
                     }
 
-                    for (int i = 0; i < cols.Length; i++)
+                    for (var i = 0; i < cols.Length; i++)
                     {
                         var name = SQLite3.ColumnName16(stmt, i);
                         cols[i] = map.FindColumn(name);
@@ -2892,7 +2874,7 @@ namespace Xein.Database.SQLite
 
         public T ExecuteScalar<T>()
         {
-            _conn.Tracer?.Invoke("Executing Query: " + this);
+            _conn.Tracer?.Invoke($"Executing Query: {this}");
 
             T val = default;
 
@@ -2925,7 +2907,7 @@ namespace Xein.Database.SQLite
 
         public IEnumerable<T> ExecuteQueryScalars<T>()
         {
-            _conn.Tracer?.Invoke("Executing Query: " + this);
+            _conn.Tracer?.Invoke($"Executing Query: {this}");
 
             var stmt = Prepare();
             try
@@ -2945,6 +2927,35 @@ namespace Xein.Database.SQLite
             {
                 Finalize(stmt);
             }
+        }
+
+        public IEnumerable<List<KeyValuePair<string, object>>> SelectDynamic()
+        {
+            _conn.Tracer?.Invoke($"Executing Query: {this}");
+
+            var stmt = Prepare();
+            try
+            {
+                var colCount = SQLite3.ColumnCount(stmt);
+                if (colCount < 1)
+                    throw new InvalidOperationException("should return at least one column");
+
+                while (SQLite3.Step(stmt) == SQLite3.Result.Row)
+                {
+                    var values = new List<KeyValuePair<string, object>>();
+                    for (int i = 0; i < colCount; i++)
+                    {
+                        var colType = SQLite3.ColumnType(stmt, i);
+                        values.Add(new KeyValuePair<string, object>(SQLite3.ColumnName(stmt, i), ReadCol(stmt, i, colType, colType is SQLite3.ColType.Integer ? typeof(long) : colType is SQLite3.ColType.Float ? typeof(double) : colType is SQLite3.ColType.Text ? typeof(string) : colType is SQLite3.ColType.Integer ? typeof(long) : null)));
+                    }
+                    yield return values;
+                }
+            }
+            finally
+            {
+                Finalize(stmt);
+            }
+
         }
 
         public void Bind(string name, object val) => _bindings.Add(new Binding
@@ -3244,7 +3255,7 @@ namespace Xein.Database.SQLite
                 }
                 else
                 {
-                    throw new NotSupportedException("Don't know how to read " + clrType);
+                    throw new NotSupportedException($"Don't know how to read {clrType}");
                 }
             }
         }
@@ -3508,7 +3519,7 @@ namespace Xein.Database.SQLite
             if (Initialized && Statement == NullStatement)
                 throw new ObjectDisposedException(nameof(PreparedSqlLiteInsertCommand));
 
-            Connection.Tracer?.Invoke("Executing: " + CommandText);
+            Connection.Tracer?.Invoke($"Executing: {CommandText}");
 
             if (!Initialized)
             {
