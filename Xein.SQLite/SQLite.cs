@@ -16,6 +16,7 @@ using System;
 using System.Collections;
 using System.Diagnostics;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Reflection;
 using System.Linq;
 using System.Linq.Expressions;
@@ -225,7 +226,7 @@ namespace Xein.Database.SQLite
         List<T> Query<T>(string query, params object[] args) where T : new();
         List<object> Query(TableMapping map, string query, params object[] args);
         List<T> QueryScalars<T>(string query, params object[] args);
-        List<List<KeyValuePair<string, object>>> SelectDynamic(string query, params object[] args);
+        List<List<dynamic>> SelectDynamic(string query, params object[] args);
         void Release(string savepoint);
         void Rollback();
         void RollbackTo(string savepoint);
@@ -1038,7 +1039,7 @@ namespace Xein.Database.SQLite
             return cmd.ExecuteQueryScalars<T>().ToList();
         }
         
-        public List<List<KeyValuePair<string, object>>> SelectDynamic(string query, params object[] args)
+        public List<List<dynamic>> SelectDynamic(string query, params object[] args)
         {
             var cmd = CreateCommand(query, args);
             return cmd.SelectDynamic().ToList();
@@ -2929,7 +2930,7 @@ namespace Xein.Database.SQLite
             }
         }
 
-        public IEnumerable<List<KeyValuePair<string, object>>> SelectDynamic()
+        public IEnumerable<List<dynamic>> SelectDynamic()
         {
             _conn.Tracer?.Invoke($"Executing Query: {this}");
 
@@ -2942,13 +2943,17 @@ namespace Xein.Database.SQLite
 
                 while (SQLite3.Step(stmt) == SQLite3.Result.Row)
                 {
-                    var values = new List<KeyValuePair<string, object>>();
+                    dynamic value = new ExpandoObject();
                     for (int i = 0; i < colCount; i++)
                     {
                         var colType = SQLite3.ColumnType(stmt, i);
-                        values.Add(new KeyValuePair<string, object>(SQLite3.ColumnName(stmt, i), ReadCol(stmt, i, colType, colType is SQLite3.ColType.Integer ? typeof(long) : colType is SQLite3.ColType.Float ? typeof(double) : colType is SQLite3.ColType.Text ? typeof(string) : colType is SQLite3.ColType.Integer ? typeof(long) : null)));
+                        value[SQLite3.ColumnName(stmt, i)] = ReadCol(stmt, i, colType,
+                            colType is SQLite3.ColType.Integer ? typeof(long) :
+                            colType is SQLite3.ColType.Float ? typeof(double) :
+                            colType is SQLite3.ColType.Text ? typeof(string) :
+                            colType is SQLite3.ColType.Integer ? typeof(long) : null);
                     }
-                    yield return values;
+                    yield return value;
                 }
             }
             finally
