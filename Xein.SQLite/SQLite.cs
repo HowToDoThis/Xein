@@ -226,7 +226,7 @@ namespace Xein.Database.SQLite
         List<T> Query<T>(string query, params object[] args) where T : new();
         List<object> Query(TableMapping map, string query, params object[] args);
         List<T> QueryScalars<T>(string query, params object[] args);
-        List<List<dynamic>> SelectDynamic(string query, params object[] args);
+        List<dynamic> SelectDynamic(string query, params object[] args);
         void Release(string savepoint);
         void Rollback();
         void RollbackTo(string savepoint);
@@ -1039,7 +1039,7 @@ namespace Xein.Database.SQLite
             return cmd.ExecuteQueryScalars<T>().ToList();
         }
         
-        public List<List<dynamic>> SelectDynamic(string query, params object[] args)
+        public List<dynamic> SelectDynamic(string query, params object[] args)
         {
             var cmd = CreateCommand(query, args);
             return cmd.SelectDynamic().ToList();
@@ -2930,7 +2930,7 @@ namespace Xein.Database.SQLite
             }
         }
 
-        public IEnumerable<List<dynamic>> SelectDynamic()
+        public IEnumerable<dynamic> SelectDynamic()
         {
             _conn.Tracer?.Invoke($"Executing Query: {this}");
 
@@ -2947,12 +2947,14 @@ namespace Xein.Database.SQLite
                     for (int i = 0; i < colCount; i++)
                     {
                         var colType = SQLite3.ColumnType(stmt, i);
-                        value[SQLite3.ColumnName(stmt, i)] = ReadCol(stmt, i, colType,
+                        (value as IDictionary<string, object>).Add(SQLite3.ColumnName(stmt, i), ReadCol(stmt, i,
+                            colType,
                             colType is SQLite3.ColType.Integer ? typeof(long) :
                             colType is SQLite3.ColType.Float ? typeof(double) :
                             colType is SQLite3.ColType.Text ? typeof(string) :
-                            colType is SQLite3.ColType.Integer ? typeof(long) : null);
+                            colType is SQLite3.ColType.Integer ? typeof(long) : null));
                     }
+
                     yield return value;
                 }
             }
