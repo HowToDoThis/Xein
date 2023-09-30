@@ -39,7 +39,7 @@ namespace Xein
 
         #region Rate / Luck
         public static int Random(this int number, int min = 0, int seed = 0)
-            => new Random(seed).Next(number, min);
+            => new Random(seed).Next(min, number);
         public static bool TestLuck(this int currentChance, int max = 100, int seed = 0)
             => currentChance >= new Random(seed).Next(max);
         #endregion
