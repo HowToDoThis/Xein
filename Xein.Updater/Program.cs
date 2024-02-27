@@ -10,10 +10,7 @@ namespace Xein.Updater
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         public static extern int MessageBox(IntPtr hwnd, string message, string title, int flag);
 
-        static void ShowMsg(string msg, string title = "Error")
-        {
-            MessageBox((IntPtr)0, msg, title, 0);
-        }
+        static void ShowMsg(string msg, string title = "Error") => MessageBox(IntPtr.Zero, msg, title, 0);
 
         static string update = "Update.zip";
         static void Main(string[] args)
