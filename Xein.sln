@@ -13,6 +13,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Xein.HTML.Generator", "Xein
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Xein.SQLite", "Xein.SQLite\Xein.SQLite.csproj", "{B01074D3-EF5A-406A-8A65-47AD223BC6ED}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Xein.SDK.Newebpay", "Xein.SDK.Newebpay\Xein.SDK.Newebpay.csproj", "{A4C17AC5-8AF2-4743-BED4-4A11DB7757C9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{B01074D3-EF5A-406A-8A65-47AD223BC6ED}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B01074D3-EF5A-406A-8A65-47AD223BC6ED}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B01074D3-EF5A-406A-8A65-47AD223BC6ED}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A4C17AC5-8AF2-4743-BED4-4A11DB7757C9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A4C17AC5-8AF2-4743-BED4-4A11DB7757C9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A4C17AC5-8AF2-4743-BED4-4A11DB7757C9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A4C17AC5-8AF2-4743-BED4-4A11DB7757C9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
