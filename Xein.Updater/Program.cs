@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Runtime.InteropServices;
 
 namespace Xein.Updater
@@ -12,27 +14,52 @@ namespace Xein.Updater
 
         static void ShowMsg(string msg, string title = "Error") => MessageBox(IntPtr.Zero, msg, title, 0);
 
-        static string update = "Update.zip";
         static void Main(string[] args)
         {
-            if (args.Length >= 1 && args[0] is not null)
-                update = args[0];
-
-            if (File.Exists(update))
+            if (args.Length < 1)
             {
-                try
+                ShowMsg($"Usage:\nUpdater.exe <Start Program After Launch> <zip files> ...");
+                return;
+            }
+
+            var startProgram = args[0];
+            var updateFiles  = args.Skip(1).ToArray();
+
+            if (updateFiles.Length < 1)
+                updateFiles = [ "Update.zip", ];
+
+            foreach (var file in updateFiles)
+            {
+                if (File.Exists(file))
                 {
-                    ZipFile.ExtractToDirectory(update, "./", true);
-                    ShowMsg("Update Successfully.");
+                    try
+                    {
+                        ZipFile.ExtractToDirectory(file, "./", true);
+                    }
+                    catch (Exception e)
+                    {
+                        ShowMsg($"File: {file}\nMessage:\n{e.Message}\nStack Trace:\n{e.StackTrace}", "Exception Triggered");
+                    }
                 }
-                catch (Exception e)
+                else
                 {
-                    ShowMsg($"File: {update}\nMessage:\n{e.Message}\nStack Trace:\n{e.StackTrace}", "Exception Triggered");
+                    ShowMsg("Update File Not Found. Skipping.");
                 }
             }
-            else
+
+            if (!File.Exists(startProgram))
             {
-                ShowMsg("Update File Not Found. Exiting.");
+                ShowMsg($"Program Not Found. Exiting...");
+                return;
+            }
+
+            try
+            {
+                Process.Start(startProgram);
+            }
+            catch (Exception e)
+            {
+                ShowMsg($"Program: {startProgram}\nMessage:\n{e.Message}\nStack Trace:\n{e.StackTrace}", "Exception Triggered");
             }
         }
     }
