@@ -13,20 +13,10 @@ namespace Xein
     {
         #region Json
         private static JsonSerializerOptions _jso;
-        private static JsonSerializerOptions DefaultJsonOptions()
-        {
-            if (_jso is null)
-                _jso = new() { WriteIndented = true, Encoder = JavaScriptEncoder.Create(UnicodeRanges.All) };
-            return _jso;
-        }
+        private static JsonSerializerOptions DefaultJsonOptions() => _jso ??= new() { WriteIndented = true, Encoder = JavaScriptEncoder.Create(UnicodeRanges.All) };
 
         private static JsonSerializerOptions _jso2;
-        private static JsonSerializerOptions JsonNoIntendedOptions()
-        {
-            if (_jso2 is null)
-                _jso2 = new() { Encoder = JavaScriptEncoder.Create(UnicodeRanges.All) };
-            return _jso2;
-        }
+        private static JsonSerializerOptions JsonNoIntendedOptions() => _jso2 ??= new() { Encoder = JavaScriptEncoder.Create(UnicodeRanges.All) };
 
         public static string JsonGet<T>(this T type, bool prettier = false) => JsonSerializer.Serialize(type, prettier ? DefaultJsonOptions() : JsonNoIntendedOptions());
         public static void JsonGetFile<T>(this T type, string fileName, bool prettier = false) => File.WriteAllText(fileName, type.JsonGet(prettier));
