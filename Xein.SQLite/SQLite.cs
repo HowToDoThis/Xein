@@ -1,10 +1,11 @@
 ﻿/*
  * Project Used: https://github.com/praeclarum/sqlite-net/commit/e8a24a8b2ecb4fd700c5fe46062239a9b08472fd
  * Implemented PR:
- * - Support for JSON1 extension #752: https://github.com/praeclarum/sqlite-net/pull/752
- * - Fix AutoIncPK when PK is not of type integer #638: https://github.com/praeclarum/sqlite-net/pull/638
- * - ToUpperInvarient is faster and reliable. #1165: https://github.com/praeclarum/sqlite-net/pull/1165
- * - Fixes [Ignore] attr not working #1119: https://github.com/praeclarum/sqlite-net/pull/1119
+ * - #752  Support for JSON1 extension https://github.com/praeclarum/sqlite-net/pull/752
+ * - #638  Fix AutoIncPK when PK is not of type integer https://github.com/praeclarum/sqlite-net/pull/638
+ * - #1165 ToUpperInvarient is faster and reliable. https://github.com/praeclarum/sqlite-net/pull/1165
+ * - #1119 Fixes [Ignore] attr not working https://github.com/praeclarum/sqlite-net/pull/1119
+ * - #1208 Add Contains method with StringComparison parameter https://github.com/praeclarum/sqlite-net/pull/1208
  *
  * NOTE: REMOVED NOT USED STUFFS, Cause This Project are easier for Desktop more than Web/Mobile
  */
@@ -2232,7 +2233,7 @@ namespace Xein.Database.SQLite
         public MaxLengthAttribute(int length) { Value = length; }
     }
 
-    public sealed class PreserveAttribute : Attribute
+    public class PreserveAttribute : Attribute
     {
         public bool AllMembers;
         public bool Conditional;
@@ -3547,6 +3548,8 @@ namespace Xein.Database.SQLite
                     cmdText += $" OFFSET {_offset.Value}";
                 }
 
+                //Remove all StringComparison arguments from args, otherwise the created command may unmatch with the real arguments.
+                args.RemoveAll(x => x is StringComparison);
                 return Connection.CreateCommand(cmdText, args.ToArray());
             }
         }
@@ -3606,7 +3609,29 @@ namespace Xein.Database.SQLite
                 if (call.Method.Name == "Like" && args.Length == 2)
                     sqlCall = $"({args[0].CommandText} LIKE {args[1].CommandText})";
                 else if (call.Method.Name == "Contains" && args.Length == 2)
-                    sqlCall = $"({args[1].CommandText} IN {args[0].CommandText})";
+                {
+                    //Add Contains method with StringComparison parameter. 
+                    if (call.Object != null && call.Object.Type == typeof(string) && args[1].Value is StringComparison comparison)
+                    {
+                        switch (comparison)
+                        {
+                            case StringComparison.Ordinal:
+                            case StringComparison.CurrentCulture:
+                            case StringComparison.InvariantCulture:
+                                sqlCall = $"(INSTR({obj.CommandText},{args[0].CommandText}) > 0)";
+                                break;
+                            case StringComparison.OrdinalIgnoreCase:
+                            case StringComparison.CurrentCultureIgnoreCase:
+                            case StringComparison.InvariantCultureIgnoreCase:
+                                sqlCall = $"({obj.CommandText} LIKE ('%' ||{args[0].CommandText}|| '%'))";
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        sqlCall = "(" + args[1].CommandText + " in " + args[0].CommandText + ")";
+                    }
+                }
                 else if (call.Method.Name == "Contains" && args.Length == 1)
                     sqlCall = call.Object != null && call.Object.Type == typeof(string)
                                   ? $"( INSTR({obj.CommandText},{args[0].CommandText}) >0 )"
