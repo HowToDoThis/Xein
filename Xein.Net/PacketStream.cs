@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Xein.Net
@@ -91,11 +92,12 @@ namespace Xein.Net
         public float ReadFloat(bool isLe = true) => StreamLength - Stream.Position < sizeof(float) ? 0 : BitConverter.ToSingle(Read<float>().Reverse(isLe));
         public double ReadDouble(bool isLe = true) => StreamLength - Stream.Position < sizeof(double) ? 0 : BitConverter.ToDouble(Read<double>().Reverse(isLe));
 
-        private unsafe byte[] Read<T>() where T : unmanaged
+        private byte[] Read<T>() where T : unmanaged
         {
-            var buf = new byte[sizeof(T)];
-            if (Stream.Read(buf) != sizeof(T))
-                buf = Array.Empty<byte>();
+            int size = Marshal.SizeOf<T>();
+            var buf = new byte[size];
+            if (Stream.Read(buf) != size)
+                return Array.Empty<byte>();
             return buf;
         }
         #endregion
