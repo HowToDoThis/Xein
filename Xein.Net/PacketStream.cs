@@ -63,11 +63,23 @@ namespace Xein.Net
             return buf;
         }
 
-        public string ReadStringW(int size)
+        public string ReadStringW(int size = 0)
         {
             var buf = string.Empty;
-            for (var i = 0; i < size; i++)
-                buf += Convert.ToChar(ReadUInt16());
+            if (size == 0)
+            {
+                var cur = Convert.ToChar(ReadUInt16());
+                while (cur != '\0')
+                {
+                    buf += cur;
+                    cur = Convert.ToChar(ReadUInt16());
+                }
+            }
+            else
+            {
+                for (var i = 0; i < size; i++)
+                    buf += Convert.ToChar(ReadUInt16());
+            }
             return buf;
         }
 
@@ -133,8 +145,9 @@ namespace Xein.Net
         }
         #endregion
 
+        public bool IsLeftover() => (StreamLength - (int)GetPos()) > 0;
+
         public byte[] GetLeftover() => ReadSize(StreamLength - (int)GetPos());
-        public byte[] GetBuffer() => Stream.GetBuffer();
         public byte[] GetData() => Stream.ToArray();
         public long GetPos() => Stream.Position;
 
