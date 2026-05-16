@@ -4,55 +4,55 @@ using System.Net.Sockets;
 
 namespace Xein.Net
 {
+    public static partial class Extension
+    {
+        public static bool IsEmpty(this string s) => string.IsNullOrWhiteSpace(s) || string.IsNullOrEmpty(s);
+
+        public static string GetRemoteIP(this Socket s)
+        {
+            var str = (s.RemoteEndPoint as IPEndPoint)?.Address.ToString();
+            return str.IsEmpty() ? "INVALID" : str[(str.LastIndexOf(':') + 1)..];
+        }
+        public static int GetRemotePort(this Socket s) => (s.RemoteEndPoint as IPEndPoint)?.Port ?? -1;
+    }
+
     public class SocketEx
     {
         private Socket Socket { get; }
-        public DateTime ConnectedTime { get; }
-        public Guid Guid { get; } = Guid.NewGuid();
+        public DateTime ConnectedTime { get; } = DateTime.Now;
 
-        public string Ip { get; }
-        public int Port => ((IPEndPoint)Socket.RemoteEndPoint)!.Port;
         public int TotalReceived { get; private set; }
         public int TotalSent { get; private set; }
 
-        /// <summary>
-        /// Socket Extension
-        /// </summary>
+        public string Ip   { get; }
+        public int    Port { get; }
+
         public SocketEx(Socket socket)
         {
             Socket = socket;
             ConnectedTime = DateTime.Now;
 
-            Ip = ((IPEndPoint)Socket.RemoteEndPoint)?.Address.ToString();
-            Ip = Ip?[(Ip.LastIndexOf(':') + 1)..];
+            Ip   = Socket.GetRemoteIP();
+            Port = Socket.GetRemotePort();
         }
 
-        #region IsXXX
-        public bool IsStillAlive()
+        public void SetNoDelay(bool noDelay = true)
         {
-            if (Socket.Poll(1000, SelectMode.SelectRead))
-                if (Socket.Available == 0)
-                    if (!IsSocketStillAlive())
-                        return false;
-            return true;
+            Socket.NoDelay = noDelay;
         }
-        private bool IsSocketStillAlive()
-        {
-            try
-            {
-                Socket.Send(new byte[] {0});
-                return true;
-            }
-            catch (SocketException e)
-            {
-                return e.SocketErrorCode is SocketError.WouldBlock or SocketError.Success;
-            }
-            catch (ObjectDisposedException)
-            { }
 
-            return false;
+        private bool bAsyncMethod;
+        public void UseAsync()
+        {
+            if (bAsyncMethod)
+            {
+                bAsyncMethod = false;
+            }
+            else
+            {
+                bAsyncMethod = true;
+            }
         }
-        #endregion
 
         #region GetXXX
         public Socket GetSocket() => Socket;
